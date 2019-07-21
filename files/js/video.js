@@ -22,6 +22,19 @@ function toggle_pause() {
     }
 }
 
+function store_volume() {
+    if (typeof(Storage) !== "undefined") {
+        localStorage.setItem("volume", document.getElementById('video').volume);
+    }
+}
+
+if (typeof(Storage) !== "undefined") {
+    var last_volume = localStorage.getItem("volume");
+    if (last_volume !== null && last_volume != 0) {
+        document.getElementById('video').volume = last_volume;
+    }
+}
+
 var showing = false;
 function show_comments(handle) {
     if (showing) {

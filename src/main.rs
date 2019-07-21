@@ -408,7 +408,7 @@ fn render_video_page(
                             "GondolaArchive has been rewritten from Racket to Rust. (Response 3 ms -> 25 µs, memory 214 MB -> 9.7 MB)";
                         }
                         div class="video" {
-                            video id="video" width="100%" height="100%" autoplay="true" onclick="toggle_pause();" controls="" {
+                            video id="video" width="100%" height="100%" autoplay="true" onclick="toggle_pause();" onvolumechange="store_volume();" controls="" {
                                 source src=(&path) type="video/webm";
                             }
                         }
