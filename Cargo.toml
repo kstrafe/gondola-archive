@@ -1,0 +1,16 @@
+[package]
+name = "gondola-rs"
+version = "0.1.0"
+authors = ["Kevin Robert Stravers <macocio@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix-files = "0.1"
+actix-web = "1.0"
+chrono = "0.4"
+fast-logger = "0.3"
+indexmap = "1.0"
+maud = "0.21.0"
+pipe-logger-lib = "1.1.5"
+rand = "0.6.1"
+rand_pcg = "0.1.2"
