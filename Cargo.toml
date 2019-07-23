@@ -6,11 +6,12 @@ edition = "2018"
 
 [dependencies]
 actix-files = "0.1"
+actix-service = "0.4"
 actix-web = "1.0"
 chrono = "0.4"
 fast-logger = "0.3"
+file-rotate = "0.1"
 indexmap = "1.0"
 maud = "0.21.0"
-pipe-logger-lib = "1.1.5"
 rand = "0.6.1"
 rand_pcg = "0.1.2"

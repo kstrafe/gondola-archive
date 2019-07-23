@@ -1,12 +1,11 @@
 #![feature(proc_macro_hygiene)]
 use actix_files::NamedFile;
+use actix_service::Service;
 use actix_web::{
-    cookie::Cookie,
-    http::header,
-    web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    cookie::Cookie, http::header, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use chrono::{prelude::*, DateTime};
-use fast_logger::{debug, error, info, trace, Generic, InDebug, Logger};
+use fast_logger::{debug, info, trace, warn, Generic, InDebug, Logger};
 use indexmap::IndexMap;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 use rand::Rng;
@@ -87,9 +86,14 @@ fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Result<Name
         .query("filename")
         .parse::<PathBuf>()
         .unwrap();
-    path.push(rest);
-    debug![state.lgr.borrow_mut(), "Attempting to retrieve file"; "filename" => InDebug(&path); clone path];
-    Ok(NamedFile::open(path)?)
+    path.push(&rest);
+    match NamedFile::open(path) {
+        Ok(file) => Ok(file),
+        Err(err) => {
+            warn![state.lgr_important.borrow_mut(), "Request for non-existent file"; "filename" => InDebug(&rest)];
+            Err(err.into())
+        }
+    }
 }
 
 fn increment_view_count(state: &web::Data<State>, info: &str) {
@@ -113,7 +117,7 @@ fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
             )
             .finish()
     } else {
-        error![state.lgr.borrow_mut(), "Index does not exist"; "index" => index];
+        error![state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index];
         HttpResponse::TemporaryRedirect()
             .set_header("Location", "/")
             .cookie(
@@ -139,7 +143,7 @@ fn play_random_video(state: web::Data<State>) -> impl Responder {
             )
             .finish()
     } else {
-        error![state.lgr.borrow_mut(), "Index does not exist"; "index" => index];
+        error![state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index];
         HttpResponse::TemporaryRedirect()
             .set_header("Location", "/")
             .cookie(
@@ -168,12 +172,9 @@ fn find_next_video(state: &web::Data<State>, path: &web::Path<String>) -> String
     }
 }
 
-fn play_next_video(state: web::Data<State>, path: web::Path<String>) -> impl Responder {
+fn play_next_video(path: web::Path<String>) -> impl Responder {
     HttpResponse::TemporaryRedirect()
-        .set_header(
-            "Location",
-            String::from("/") + &find_next_video(&state, &path),
-        )
+        .set_header("Location", String::from("/") + &path)
         .cookie(
             Cookie::build(COOKIE_NAME, COOKIE_AUTOPLAY_NEXT_VALUE)
                 .path("/")
@@ -363,13 +364,8 @@ fn generate_list_page(state: &mut State) {
 }
 
 fn list_all_videos(state: web::Data<State>) -> impl Responder {
-    benchmark! {
-        |duration| info![state.lgr.borrow_mut(), "Time to load list page"; "duration" => InDebug(&duration)],
-        {
-            let listpage = state.listpage.read().unwrap();
-            HttpResponse::Ok().body(&*listpage)
-        }
-    }
+    let listpage = state.listpage.read().unwrap();
+    HttpResponse::Ok().body(&*listpage)
 }
 
 fn render_video_page(
@@ -377,100 +373,98 @@ fn render_video_page(
     info: web::Path<String>,
     request: HttpRequest,
 ) -> impl Responder {
-    benchmark! {
-        |duration| info![state.lgr.borrow_mut(), "Time to load video page"; "duration" => InDebug(&duration)],
-        {
-            let play_mode = find_playmode(request);
+    let next_video = find_next_video(&state, &info);
 
-            let path = String::from("/files/video/") + &info;
+    let play_mode = find_playmode(request);
 
-            increment_view_count(&state, &info);
+    let path = String::from("/files/video/") + &info;
 
-            let video_infos = state.video_info.read().unwrap();
-            let default_video_info = VideoInfo::default();
-            let video_info = video_infos.get(&*info).unwrap_or(&default_video_info);
-            let video_count = video_infos.len();
+    increment_view_count(&state, &info);
 
-            let html = html! {
-                (DOCTYPE)
-                html {
-                    head {
-                        (header())
-                        script type="text/javascript" {
-                            (PreEscaped("var forum_url = \"")) (FORUM_NAME) (PreEscaped("\";"))
-                            (PreEscaped("var random_url = \"/random\";"))
-                            (PreEscaped("var next_url = \"/next/")) (info) (PreEscaped("\";"))
-                            "var play_random = " @if play_mode == PlayMode::Random { "true" } @else { "false" } ";"
-                        }
-                    }
-                    body class="main" {
-                        div class="announcement" {
-                            "GondolaArchive has been rewritten from Racket to Rust. (Response 3 ms -> 25 µs, memory 214 MB -> 9.7 MB)";
-                        }
-                        div class="video" {
-                            video id="video" width="100%" height="100%" autoplay="true" onclick="toggle_pause();" onvolumechange="store_volume();" controls="" {
-                                source src=(&path) type="video/webm";
-                            }
-                        }
-                        script type="text/javascript" src="/files/js/video.js" {}
-                        div class="bottom" {
-                            a class="button" href="/random" {
-                                div class="center" {
-                                    span class="small" {
-                                        "Source: ";
-                                        br;
-                                        (video_info.source.as_ref().unwrap_or(&"Unknown (let me know in the comments)".to_string()));
-                                    }
-                                    br;
-                                    "Next (random)";
-                                    @if play_mode == PlayMode::Random {
-                                        br;
-                                        span class="autoplay" { "autoplaying random" }
-                                    }
-                                }
-                            }
-                            a class="button" href=(&(String::from("/next/") + &*info)) {
-                                div class="center" {
-                                    span class="small" {
-                                        (find_next_video(&state, &info))
-                                        br;
-                                    }
-                                    "Next (ordered)";
-                                    @if play_mode == PlayMode::Sequential {
-                                        br;
-                                        span class="autoplay" { "autoplaying sequential" }
-                                    }
-                                }
-                            }
-                            div class="button" onclick="show_comments();"{
-                                div class="center" {
-                                    (video_info.views) " views";
-                                    br;
-                                    "Show "
-                                    a id="disqus_comments" href=(&(String::from("") + SITE_NAME + "/" + &*info + "#disqus_thread")) {
-                                        span class="loading" { "" }
-                                        " Comments"
-                                    }
-                                }
-                            }
-                            a class="button" href="/list"{
-                                div class="center" {
-                                    (video_count) " Webms";
-                                    br;
-                                    "Show All/Info";
-                                }
-                            }
-                        }
-                        div id="disqus_thread" hidden="";
-                        script type="text/javascript" src="files/js/disqus.js" {}
-                        script async="" id="dsq-count-scr" src=(&(String::from("//") + FORUM_NAME + ".disqus.com/count.js")) {}
-                        noscript { "Please enable Javascript to view the " a href="https://disqus.com/?ref_noscript" { "comments powered by Disqus." } }
+    let video_infos = state.video_info.read().unwrap();
+    let default_video_info = VideoInfo::default();
+    let video_info = video_infos.get(&*info).unwrap_or(&default_video_info);
+    let video_count = video_infos.len();
+
+    let html = html! {
+        (DOCTYPE)
+        html {
+            head {
+                (header())
+                title { (info) }
+                script type="text/javascript" {
+                    (PreEscaped("var forum_url = \"")) (FORUM_NAME) (PreEscaped("\";"))
+                    (PreEscaped("var random_url = \"/random\";"))
+                    (PreEscaped("var next_url = \"/next/")) (info) (PreEscaped("\";"))
+                    "var play_random = " @if play_mode == PlayMode::Random { "true" } @else { "false" } ";"
+                }
+            }
+            body class="main" {
+                div class="announcement" {
+                    "GondolaArchive has been rewritten from Racket to Rust. (Response 3 ms -> 25 µs, memory 214 MB -> 9.7 MB)";
+                }
+                div class="video" {
+                    video id="video" width="100%" height="100%" autoplay="true" onclick="toggle_pause();" onvolumechange="store_volume();" controls="" {
+                        source src=(&path) type="video/webm";
                     }
                 }
-            };
-            HttpResponse::Ok().body(html.into_string())
+                script type="text/javascript" src="/files/js/video.js" {}
+                div class="bottom" {
+                    a class="button" href="/random" {
+                        div class="center" {
+                            span class="small" {
+                                "Source: ";
+                                br;
+                                (video_info.source.as_ref().unwrap_or(&"Unknown (let me know in the comments)".to_string()));
+                            }
+                            br;
+                            "Next (random)";
+                            @if play_mode == PlayMode::Random {
+                                br;
+                                span class="autoplay" { "autoplaying random" }
+                            }
+                        }
+                    }
+                    a class="button" href=(&(String::from("/next/") + &next_video)) {
+                        div class="center" {
+                            span class="small" {
+                                (next_video)
+                                br;
+                            }
+                            "Next (ordered)";
+                            @if play_mode == PlayMode::Sequential {
+                                br;
+                                span class="autoplay" { "autoplaying sequential" }
+                            }
+                        }
+                    }
+                    div class="button" onclick="show_comments();"{
+                        div class="center" {
+                            (video_info.views) " views";
+                            br;
+                            "Show "
+                            a id="disqus_comments" href=(&(String::from("") + SITE_NAME + "/" + &*info + "#disqus_thread")) {
+                                span class="loading" { "" }
+                                " Comments"
+                            }
+                        }
+                    }
+                    a class="button" href="/list"{
+                        div class="center" {
+                            (video_count) " Webms";
+                            br;
+                            "Show All/Info";
+                        }
+                    }
+                }
+                div id="disqus_thread" hidden="";
+                script type="text/javascript" src="files/js/disqus.js" {}
+                script async="" id="dsq-count-scr" src=(&(String::from("//") + FORUM_NAME + ".disqus.com/count.js")) {}
+                noscript { "Please enable Javascript to view the " a href="https://disqus.com/?ref_noscript" { "comments powered by Disqus." } }
+            }
         }
-    }
+    };
+    HttpResponse::Ok().body(html.into_string())
 }
 
 fn unknown_route(state: web::Data<State>, request: HttpRequest) -> impl Responder {
@@ -510,6 +504,7 @@ impl Default for PlayMode {
 #[derive(Clone)]
 struct State {
     pub lgr: RefCell<Logger<Generic>>,
+    pub lgr_important: RefCell<Logger<Generic>>,
     pub listpage: Arc<RwLock<String>>,
     pub random: RefCell<Random>,
     pub random_counter: Arc<AtomicU64>,
@@ -518,11 +513,19 @@ struct State {
 
 impl Default for State {
     fn default() -> Self {
-        let mut lgr = Logger::spawn_with_writer("site", writer::create_rotational_writer());
+        let mut lgr =
+            Logger::spawn_with_writer("site", writer::create_rotational_writer("files/logs/log"));
+        let mut lgr_important = Logger::spawn_with_writer(
+            "important",
+            writer::create_rotational_writer("files/logs/important"),
+        );
         lgr.set_colorize(true);
         lgr.set_log_level(128);
+        lgr_important.set_colorize(true);
+        lgr_important.set_log_level(255);
         Self {
             lgr: RefCell::new(lgr),
+            lgr_important: RefCell::new(lgr_important),
             listpage: Arc::new(RwLock::new(String::new())),
             random: RefCell::new(Random::new(0)),
             random_counter: Arc::new(AtomicU64::new(0)),
@@ -559,6 +562,7 @@ fn slurp(path: &PathBuf) -> io::Result<String> {
 
 fn read_state_from_disk(state: &mut State) -> io::Result<()> {
     let mut lgr = state.lgr.borrow_mut();
+    let mut lgr_important = state.lgr_important.borrow_mut();
 
     let directory = read_dir("files/video/")?;
     let mut video_infos = state.video_info.write().unwrap();
@@ -593,10 +597,10 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
                 let filename = String::from(filename);
                 trace![lgr, "Inserting file into table"; "filename" => filename, "info" => InDebug(&video_info); clone video_info];
             } else {
-                error![lgr, "Views file contains a non-number value"; "filename" => InDebug(&views)];
+                error![lgr_important, "Views file contains a non-number value"; "filename" => InDebug(&views)];
             }
         } else {
-            error![lgr, "Unable to read file name from file"; "filename" => InDebug(&path)];
+            error![lgr_important, "Unable to read file name from file"; "filename" => InDebug(&path)];
         }
     }
 
@@ -606,6 +610,10 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
 
 fn update_state(mut state: State) {
     let mut lgr = state.lgr.borrow().clone_with_context("state-updater");
+    let mut lgr_important = state
+        .lgr_important
+        .borrow()
+        .clone_with_context("state-updater-important");
     loop {
         thread::sleep(Duration::from_secs(60 * 30));
         {
@@ -651,12 +659,12 @@ fn update_state(mut state: State) {
                                     }
                                 }
                             } else {
-                                error![lgr, "Unable to read file name from file"; "filename" => InDebug(&path)];
+                                error![lgr_important, "Unable to read file name from file"; "filename" => InDebug(&path)];
                             }
                         }
                     }
                     Err(err) => {
-                        error![lgr, "Unable to read directory"; "error" => err];
+                        error![lgr_important, "Unable to read directory"; "error" => err];
                     }
                 }
             }
@@ -675,12 +683,12 @@ fn update_state(mut state: State) {
                             match file.write_all(value.views.to_string().as_bytes()) {
                                 Ok(_) => {}
                                 Err(err) => {
-                                    error![lgr, "Unable to write to statistics file"; "error" => err];
+                                    error![lgr_important, "Unable to write to statistics file"; "error" => err];
                                 }
                             }
                         }
                         Err(err) => {
-                            error![lgr, "Unable to create statistics file"; "error" => err];
+                            error![lgr_important, "Unable to create statistics file"; "error" => err];
                         }
                     }
 
@@ -713,8 +721,19 @@ fn main() -> std::io::Result<()> {
 
         info![thread_state.lgr.borrow_mut(), "Starting worker thread"; "random seed" => seed];
 
+        let mut benchmark_log = state.lgr.borrow_mut().clone_with_context("benchmark");
+        let mut request_log = state.lgr.borrow_mut().clone_with_context("request");
+
         App::new()
             .data(thread_state)
+            .wrap_fn(move |req, srv| {
+                let request = format!["{:?}", req];
+                info![request_log, "Incoming request"; "data" => request];
+                benchmark! {
+                    |duration| info![benchmark_log, "Total request time"; "duration" => InDebug(&duration)],
+                    srv.call(req)
+                }
+            })
             .route("/", web::get().to(index))
             .route("/random", web::get().to(play_random_video))
             .route("/random-raw", web::get().to(play_random_video_raw))
