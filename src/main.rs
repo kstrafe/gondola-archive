@@ -67,7 +67,7 @@ fn header() -> Markup {
         meta name="description" content=(DESCRIPTION);
         meta property="og:title" content=(SINGULAR);
         meta property="og:description" content=(DESCRIPTION);
-        meta property="og:image" content="/files/128.png";
+        meta property="og:image" content="/files/favicon/128.png";
     }
 }
 
