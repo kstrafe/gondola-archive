@@ -5,7 +5,7 @@ use actix_web::{
     cookie::Cookie, http::header, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use chrono::{prelude::*, DateTime};
-use fast_logger::{debug, info, trace, warn, Generic, InDebug, Logger};
+use fast_logger::{error, info, trace, warn, Generic, InDebug, Logger};
 use indexmap::IndexMap;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 use rand::Rng;
@@ -13,7 +13,7 @@ use rand_pcg::Pcg64Mcg as Random;
 use std::{
     cell::RefCell,
     cmp,
-    fs::{read_dir, File},
+    fs::{read_dir, remove_file, File},
     io::{self, Read, Write},
     path::PathBuf,
     sync::{
@@ -610,10 +610,7 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
 
 fn update_state(mut state: State) {
     let mut lgr = state.lgr.borrow().clone_with_context("state-updater");
-    let mut lgr_important = state
-        .lgr_important
-        .borrow()
-        .clone_with_context("state-updater-important");
+    let mut lgr_important = state.lgr_important.borrow().clone_add_context("important");
     loop {
         thread::sleep(Duration::from_secs(60 * 30));
         {
@@ -664,8 +661,38 @@ fn update_state(mut state: State) {
                         }
                     }
                     Err(err) => {
-                        error![lgr_important, "Unable to read directory"; "error" => err];
+                        error![lgr_important, "Unable to read directory"; "directory" => "files/video", "error" => err];
                     }
+                }
+            }
+
+            match read_dir("files/remove") {
+                Ok(directory) => {
+                    for file in directory {
+                        let file = if let Ok(file) = file { file } else { continue };
+                        let path = file.path();
+
+                        if let Some(Some(filename)) = path.file_name().map(|x| x.to_str()) {
+                            if filename.chars().next().unwrap() == '.' {
+                                continue;
+                            }
+
+                            {
+                                let mut writer = state.video_info.write().unwrap();
+                                writer.swap_remove(filename);
+                                let filename = filename.to_string();
+                                trace![lgr, "Removing file from table"; "filename" => filename];
+                            }
+
+                            let filename = filename.to_string();
+                            if let Err(err) = remove_file(path) {
+                                error![lgr_important, "Unable to remove removal file"; "error" => err, "filename" => filename];
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    error![lgr_important, "Unable to read directory"; "directory" => "files/remove", "error" => err];
                 }
             }
 

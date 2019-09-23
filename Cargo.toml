@@ -1,17 +1,17 @@
 [package]
 name = "gondola-rs"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Kevin Robert Stravers <macocio@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix-files = "0.1"
-actix-service = "0.4"
-actix-web = "1.0"
+actix-files = "0.1.4"
+actix-service = "0.4.2"
+actix-web = "1.0.7"
 chrono = "0.4"
-fast-logger = "0.3"
-file-rotate = "0.1"
-indexmap = "1.0"
+fast-logger = "0.5.1"
+file-rotate = "0.1.1"
+indexmap = "1.2.0"
 maud = "0.21.0"
 rand = "0.6.1"
 rand_pcg = "0.1.2"
