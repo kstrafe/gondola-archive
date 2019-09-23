@@ -63,7 +63,7 @@ fn header() -> Markup {
         link rel="icon" type="image/png" href="/files/favicon/64.png";
         link rel="icon" type="image/png" href="/files/favicon/128.png";
         link rel="stylesheet" type="text/css" href="/files/css/reset.css";
-        link rel="stylesheet" type="text/css" href="/files/css/style.css?x=3";
+        link rel="stylesheet" type="text/css" href="/files/css/style.css?x=4";
         meta name="description" content=(DESCRIPTION);
         meta property="og:title" content=(SINGULAR);
         meta property="og:description" content=(DESCRIPTION);

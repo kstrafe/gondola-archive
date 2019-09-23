@@ -1,7 +1,7 @@
 @charset "utf-8";
 * { margin: 0; padding: 0; }
 .rainbow-block { animation: color_change 3s infinite alternate; border: thin solid; font-size: 1.2em; font-weight: bold; }
-.announcement { background: rgba(127, 0, 0, 0.5); color: white; display: inline-block; height: auto; position: absolute; text-align: center; width: 100%; }
+.announcement { background: rgba(127, 0, 0, 0.5); color: white; display: inline-block; height: auto; position: absolute; text-align: center; visibility: hidden; width: 100%; }
 body { position: absolute; }
 strong { font-weight: bold; }
 .source-table { border-right: thin solid black; display: inline-block; font-size: 0.8em; vertical-align: top; max-width: 70%; }
