@@ -57,19 +57,31 @@ static FORUM_NAME: &'static str = "evo-1";
 static SITE_NAME: &'static str = "http://gondola.stravers.net";
 
 fn header() -> Markup {
+    let december = Utc::today().month() == 12;
     html! {
         meta charset="UTF-8";
         meta name="viewport" content="width=device-width,maximum-scale=1,minimum-scale=1,minimal-ui";
-        link rel="icon" type="image/png" href="/files/favicon/16.png";
-        link rel="icon" type="image/png" href="/files/favicon/32.png";
-        link rel="icon" type="image/png" href="/files/favicon/64.png";
-        link rel="icon" type="image/png" href="/files/favicon/128.png";
+        @if december {
+            link rel="icon" type="image/png" href="/files/favicon/16_christmas.png";
+            link rel="icon" type="image/png" href="/files/favicon/32_christmas.png";
+            link rel="icon" type="image/png" href="/files/favicon/64_christmas.png";
+            link rel="icon" type="image/png" href="/files/favicon/128_christmas.png";
+        } @else {
+            link rel="icon" type="image/png" href="/files/favicon/16.png";
+            link rel="icon" type="image/png" href="/files/favicon/32.png";
+            link rel="icon" type="image/png" href="/files/favicon/64.png";
+            link rel="icon" type="image/png" href="/files/favicon/128.png";
+        }
         link rel="stylesheet" type="text/css" href="/files/css/reset.css";
         link rel="stylesheet" type="text/css" href="/files/css/style.css?x=7";
         meta name="description" content=(DESCRIPTION);
         meta property="og:title" content=(SINGULAR);
         meta property="og:description" content=(DESCRIPTION);
-        meta property="og:image" content="/files/favicon/128.png";
+        @if december {
+            meta property="og:image" content="/files/favicon/128.png";
+        } @else {
+            meta property="og:image" content="/files/favicon/128_christmas.png";
+        }
     }
 }
 
