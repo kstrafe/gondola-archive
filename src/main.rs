@@ -389,7 +389,7 @@ fn render_video_page(
                 script type="text/javascript" {
                     (PreEscaped("var forum_url = \"")) (FORUM_NAME) (PreEscaped("\";"))
                     (PreEscaped("var random_url = \"/random\";"))
-                    (PreEscaped("var next_url = \"/next/")) (info) (PreEscaped("\";"))
+                    (PreEscaped("var next_url = \"/next/")) (next_video) (PreEscaped("\";"))
                     "var play_random = " @if play_mode == PlayMode::Random { "true" } @else { "false" } ";"
                 }
             }
