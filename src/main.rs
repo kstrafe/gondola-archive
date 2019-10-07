@@ -2,7 +2,7 @@
 use actix_files::NamedFile;
 use actix_service::Service;
 use actix_web::{
-    cookie::Cookie, http::header, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    cookie::Cookie, http::header, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use chrono::{prelude::*, DateTime};
 use fast_logger::{error, info, trace, warn, Generic, InDebug, Logger};
@@ -184,17 +184,11 @@ fn play_next_video(path: web::Path<String>) -> impl Responder {
 }
 
 fn find_playmode(request: HttpRequest) -> PlayMode {
-    if let Some(cookie) = request.headers().get(header::COOKIE) {
-        let cookie = String::from(std::str::from_utf8(cookie.as_bytes()).unwrap());
-        let cookie = cookie.parse::<Cookie>();
-        if let Ok(cookie) = cookie {
-            if cookie.name() == COOKIE_NAME {
-                if cookie.value() == COOKIE_AUTOPLAY_RANDOM_VALUE {
-                    return PlayMode::Random;
-                } else if cookie.value() == COOKIE_AUTOPLAY_NEXT_VALUE {
-                    return PlayMode::Sequential;
-                }
-            }
+    if let Some(cookie) = request.cookie(COOKIE_NAME) {
+        if cookie.value() == COOKIE_AUTOPLAY_RANDOM_VALUE {
+            return PlayMode::Random;
+        } else if cookie.value() == COOKIE_AUTOPLAY_NEXT_VALUE {
+            return PlayMode::Sequential;
         }
     }
     PlayMode::default()
