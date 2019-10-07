@@ -2,14 +2,16 @@
 use actix_files::NamedFile;
 use actix_service::Service;
 use actix_web::{
-    cookie::Cookie, http::header, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
+    cookie::Cookie, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use chrono::{prelude::*, DateTime};
 use fast_logger::{error, info, trace, warn, Generic, InDebug, Logger};
+use gameshell::{predicates::ANY_STRING, types::Type, GameShell, IncConsumer};
 use indexmap::IndexMap;
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 use rand::Rng;
 use rand_pcg::Pcg64Mcg as Random;
+use serde_derive::Deserialize;
 use std::{
     cell::RefCell,
     cmp,
@@ -63,7 +65,7 @@ fn header() -> Markup {
         link rel="icon" type="image/png" href="/files/favicon/64.png";
         link rel="icon" type="image/png" href="/files/favicon/128.png";
         link rel="stylesheet" type="text/css" href="/files/css/reset.css";
-        link rel="stylesheet" type="text/css" href="/files/css/style.css?x=4";
+        link rel="stylesheet" type="text/css" href="/files/css/style.css?x=7";
         meta name="description" content=(DESCRIPTION);
         meta property="og:title" content=(SINGULAR);
         meta property="og:description" content=(DESCRIPTION);
@@ -379,6 +381,7 @@ fn render_video_page(
     let default_video_info = VideoInfo::default();
     let video_info = video_infos.get(&*info).unwrap_or(&default_video_info);
     let video_count = video_infos.len();
+    let announcement = state.announcement.read().unwrap();
 
     let html = html! {
         (DOCTYPE)
@@ -394,8 +397,10 @@ fn render_video_page(
                 }
             }
             body class="main" {
-                div class="announcement" {
-                    "GondolaArchive has been rewritten from Racket to Rust. (Response 3 ms -> 25 µs, memory 214 MB -> 9.7 MB)";
+                @if let Some(announcement) = &*announcement {
+                    div class="announcement" {
+                        (announcement)
+                    }
                 }
                 div class="video" {
                     video id="video" width="100%" height="100%" autoplay="true" onclick="toggle_pause();" onvolumechange="store_volume();" controls="" {
@@ -469,6 +474,122 @@ fn unknown_route(state: web::Data<State>, request: HttpRequest) -> impl Responde
         .finish()
 }
 
+// ---
+
+#[derive(Clone, Deserialize)]
+struct ShellCommandForm {
+    act: String,
+    key: String,
+}
+
+enum RanState {
+    NoCommandToRun,
+    WrongPassword,
+    RanCommand(String),
+}
+
+fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) -> impl Responder {
+    let ran_command;
+
+    if !form.act.is_empty() && !form.key.is_empty() {
+        let act_clone = form.act.clone();
+        info![state.lgr.borrow_mut(), "Running shell"; "act" => act_clone];
+        if let Ok(password) = slurp(&PathBuf::from("password")) {
+            if form.key.clone() + "\n" == password {
+                let mut string = vec![];
+                let act = form.act.clone() + "\n";
+                let mut gsh = GameShell::new(state, act.as_bytes(), &mut string);
+                fn handler(
+                    context: &mut web::Data<State>,
+                    args: &[Type],
+                ) -> Result<String, String> {
+                    info![context.lgr.borrow_mut(), "Running handler"];
+                    if let [Type::String(string)] = args {
+                        *context.announcement.write().unwrap() = Some(string.clone());
+                        Ok("Announcement changed".into())
+                    } else {
+                        Err("Unable to change announcement".into())
+                    }
+                }
+                gsh.register((&[("announce", ANY_STRING)], handler))
+                    .unwrap();
+
+                fn denounce(
+                    context: &mut web::Data<State>,
+                    args: &[Type],
+                ) -> Result<String, String> {
+                    *context.announcement.write().unwrap() = None;
+                    Ok("Announcement disabled!".into())
+                }
+                gsh.register((&[("denounce", None)], denounce)).unwrap();
+
+                let mut buffer = [0u8; 1024];
+                gsh.run(&mut buffer);
+
+                ran_command =
+                    RanState::RanCommand(std::str::from_utf8(&string[..]).unwrap().to_string());
+            } else {
+                ran_command = RanState::WrongPassword;
+            }
+        } else {
+            error![
+                state.lgr_important.borrow_mut(),
+                "Unable to read password file for shell commands"
+            ];
+            ran_command = RanState::WrongPassword;
+        }
+    } else {
+        ran_command = RanState::NoCommandToRun;
+    }
+
+    shell_render(ran_command, &form.key)
+}
+
+fn shell() -> impl Responder {
+    shell_render(RanState::NoCommandToRun, "")
+}
+
+fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
+    let html = html! {
+        (DOCTYPE)
+        html {
+            head {
+                (header())
+                title { "Interactive Shell" }
+            }
+            body {
+                form action="shell" method="POST" {
+                    input autofocus="" name="act" type="text" placeholder="Command" size="100";
+                    br;
+                    input name="key" type="password" placeholder="Key" value=(key);
+                    br;
+                    input type="submit" value="Submit";
+                }
+                br;
+                pre {
+                    @match ran_command {
+                        RanState::NoCommandToRun => {
+                            "No command run"
+                        }
+                        RanState::WrongPassword => {
+                            "Wrong password"
+                        }
+                        RanState::RanCommand(string) => {
+                            "Command executed:\n"
+                            pre class="feedback" {
+                                (&string)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+    HttpResponse::Ok().body(html.into_string())
+}
+
+// ---
+
 fn redirect_favicon() -> impl Responder {
     HttpResponse::PermanentRedirect()
         .set_header("Location", "/files/favicon/128.png")
@@ -497,6 +618,7 @@ impl Default for PlayMode {
 
 #[derive(Clone)]
 struct State {
+    pub announcement: Arc<RwLock<Option<String>>>,
     pub lgr: RefCell<Logger<Generic>>,
     pub lgr_important: RefCell<Logger<Generic>>,
     pub listpage: Arc<RwLock<String>>,
@@ -518,6 +640,7 @@ impl Default for State {
         lgr_important.set_colorize(true);
         lgr_important.set_log_level(255);
         Self {
+            announcement: Arc::new(RwLock::new(None)),
             lgr: RefCell::new(lgr),
             lgr_important: RefCell::new(lgr_important),
             listpage: Arc::new(RwLock::new(String::new())),
@@ -763,6 +886,8 @@ fn main() -> std::io::Result<()> {
             .route("/list", web::get().to(list_all_videos))
             .route("favicon.ico", web::get().to(redirect_favicon))
             .route("/files/{filename:.*}", web::get().to(get_file))
+            .route("/shell", web::get().to(shell))
+            .route("/shell", web::post().to(do_shell))
             .route("/{name}", web::get().to(render_video_page))
             .default_service(web::get().to(unknown_route))
     })
