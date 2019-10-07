@@ -56,7 +56,7 @@ static SINGULAR: &'static str = "Gondola";
 static FORUM_NAME: &'static str = "evo-1";
 static SITE_NAME: &'static str = "http://gondola.stravers.net";
 
-fn header() -> Markup {
+fn header(style_count: u64) -> Markup {
     let december = Utc::today().month() == 12;
     html! {
         meta charset="UTF-8";
@@ -73,7 +73,7 @@ fn header() -> Markup {
             link rel="icon" type="image/png" href="/files/favicon/128.png";
         }
         link rel="stylesheet" type="text/css" href="/files/css/reset.css";
-        link rel="stylesheet" type="text/css" href="/files/css/style.css?x=7";
+        link rel="stylesheet" type="text/css" href=(&("/files/css/style.css?x=".to_string() + &style_count.to_string()));
         meta name="description" content=(DESCRIPTION);
         meta property="og:title" content=(SINGULAR);
         meta property="og:description" content=(DESCRIPTION);
@@ -283,7 +283,7 @@ fn generate_list_page(state: &mut State) {
         html {
             (DOCTYPE)
             head {
-                (header())
+                (header(state.style_count.load(Ordering::Relaxed)))
                 title { "All " (PLURALITY) " - " (LIST_TITLE) }
             }
             body {
@@ -399,7 +399,7 @@ fn render_video_page(
         (DOCTYPE)
         html {
             head {
-                (header())
+                (header(state.style_count.load(Ordering::Relaxed)))
                 title { (info) }
                 script type="text/javascript" {
                     (PreEscaped("var forum_url = \"")) (FORUM_NAME) (PreEscaped("\";"))
@@ -526,14 +526,20 @@ fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) -> impl 
                 gsh.register((&[("announce", ANY_STRING)], handler))
                     .unwrap();
 
-                fn denounce(
-                    context: &mut web::Data<State>,
-                    args: &[Type],
-                ) -> Result<String, String> {
+                fn denounce(context: &mut web::Data<State>, _: &[Type]) -> Result<String, String> {
                     *context.announcement.write().unwrap() = None;
-                    Ok("Announcement disabled!".into())
+                    Ok("Announcement disabled".into())
                 }
                 gsh.register((&[("denounce", None)], denounce)).unwrap();
+
+                fn style_counter(
+                    context: &mut web::Data<State>,
+                    _: &[Type],
+                ) -> Result<String, String> {
+                    context.style_count.fetch_add(1, Ordering::Relaxed);
+                    Ok("Style counter incremented".into())
+                }
+                gsh.register((&[("style", None)], style_counter)).unwrap();
 
                 let mut buffer = [0u8; 1024];
                 gsh.run(&mut buffer);
@@ -566,7 +572,7 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
         (DOCTYPE)
         html {
             head {
-                (header())
+                (header(0))
                 title { "Interactive Shell" }
             }
             body {
@@ -577,6 +583,8 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
                     br;
                     input type="submit" value="Submit";
                 }
+                br;
+                a href="/" { "Return" }
                 br;
                 pre {
                     @match ran_command {
@@ -631,6 +639,7 @@ impl Default for PlayMode {
 #[derive(Clone)]
 struct State {
     pub announcement: Arc<RwLock<Option<String>>>,
+    pub style_count: Arc<AtomicU64>,
     pub lgr: RefCell<Logger<Generic>>,
     pub lgr_important: RefCell<Logger<Generic>>,
     pub listpage: Arc<RwLock<String>>,
@@ -653,6 +662,7 @@ impl Default for State {
         lgr_important.set_log_level(255);
         Self {
             announcement: Arc::new(RwLock::new(None)),
+            style_count: Arc::new(AtomicU64::new(0)),
             lgr: RefCell::new(lgr),
             lgr_important: RefCell::new(lgr_important),
             listpage: Arc::new(RwLock::new(String::new())),
