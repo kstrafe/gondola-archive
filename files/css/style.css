@@ -2,13 +2,13 @@
 * { margin: 0; padding: 0; }
 .rainbow-block { animation: color_change 3s infinite alternate; border: thin solid; font-size: 1.2em; font-weight: bold; }
 .announcement { background: rgba(127, 0, 0, 0.5); color: white; display: inline-block; height: auto; position: absolute; text-align: center; width: 100%; }
-body { position: absolute; }
+body { background-color: grey; color: black; position: absolute; }
 form { width: 100%; }
 input { width: 100%; }
 strong { font-weight: bold; }
 .source-table { border-right: thin solid black; display: inline-block; font-size: 0.8em; vertical-align: top; max-width: 70%; }
 .view-table { display: inline-block; font-size: 0.8em; vertical-align: top; max-width: 70%; }
-tr:nth-child(even) { background-color: #EEEEEE; }
+tr:nth-child(even) { background-color: #777777; }
 @keyframes color_change { 0% { background-color: cyan; } 25% { background-color: orange; } 50% { background-color: yellow; } 75% { background-color: chartreuse; } 100% { background-color: red; } }
 .loading:after { animation: dotty steps(1, end) 2s infinite; content: ''; display: inline-block; font-family: monospace; }
 @keyframes dotty { 0% { content: '|'; } 25% { content: '/'; } 50% { content: '-'; } 75% { content: '\\'; } 100% { content: '|'; }}
