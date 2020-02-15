@@ -44,17 +44,17 @@ macro_rules! benchmark {
 
 // ---
 
-static COOKIE_NAME: &'static str = "autoplay";
-static COOKIE_AUTOPLAY_RANDOM_VALUE: &'static str = "random";
-static COOKIE_AUTOPLAY_NEXT_VALUE: &'static str = "next";
+static COOKIE_NAME: &str = "autoplay";
+static COOKIE_AUTOPLAY_RANDOM_VALUE: &str = "random";
+static COOKIE_AUTOPLAY_NEXT_VALUE: &str = "next";
 
-static PLURALITY: &'static str = "Gondolas";
-static LIST_TITLE: &'static str = "GondolaArchive";
-static DEFAULT_VIDEO: &'static str = "/FrontPage.webm";
-static DESCRIPTION: &'static str = "Gondola webms depicting our favorite silent observer";
-static SINGULAR: &'static str = "Gondola";
-static FORUM_NAME: &'static str = "evo-1";
-static SITE_NAME: &'static str = "http://gondola.stravers.net";
+static PLURALITY: &str = "Gondolas";
+static LIST_TITLE: &str = "GondolaArchive";
+static DEFAULT_VIDEO: &str = "/FrontPage.webm";
+static DESCRIPTION: &str = "Gondola webms depicting our favorite silent observer";
+static SINGULAR: &str = "Gondola";
+static FORUM_NAME: &str = "evo-1";
+static SITE_NAME: &str = "http://gondola.stravers.net";
 
 fn header(style_count: u64) -> Markup {
     let december = Utc::today().month() == 12;
@@ -87,13 +87,13 @@ fn header(style_count: u64) -> Markup {
 
 // ---
 
-fn index() -> impl Responder {
+async fn index() -> impl Responder {
     HttpResponse::PermanentRedirect()
         .set_header("Location", DEFAULT_VIDEO)
         .finish()
 }
 
-fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Result<NamedFile> {
+async fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Result<NamedFile> {
     let mut path = PathBuf::from("files/");
     let rest = req
         .match_info()
@@ -117,7 +117,7 @@ fn increment_view_count(state: &web::Data<State>, info: &str) {
     }
 }
 
-fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
+async fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
     let video_infos = state.video_info.read().unwrap();
     let index = state.random.borrow_mut().gen_range(0, video_infos.len());
     let entry = video_infos.get_index(index);
@@ -143,7 +143,7 @@ fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
     }
 }
 
-fn play_random_video(state: web::Data<State>) -> impl Responder {
+async fn play_random_video(state: web::Data<State>) -> impl Responder {
     let video_infos = state.video_info.read().unwrap();
     let index = state.random.borrow_mut().gen_range(0, video_infos.len());
     let entry = video_infos.get_index(index);
@@ -186,7 +186,7 @@ fn find_next_video(state: &web::Data<State>, path: &web::Path<String>) -> String
     }
 }
 
-fn play_next_video(path: web::Path<String>) -> impl Responder {
+async fn play_next_video(path: web::Path<String>) -> impl Responder {
     HttpResponse::TemporaryRedirect()
         .set_header("Location", String::from("/") + &path)
         .cookie(
@@ -208,11 +208,11 @@ fn find_playmode(request: HttpRequest) -> PlayMode {
     PlayMode::default()
 }
 
-fn sorted_by_views(_ka: &String, va: &VideoInfo, _kb: &String, vb: &VideoInfo) -> cmp::Ordering {
+fn sorted_by_views(_ka: &str, va: &VideoInfo, _kb: &str, vb: &VideoInfo) -> cmp::Ordering {
     vb.views.cmp(&va.views)
 }
 
-fn sorted_by_date(_ka: &String, va: &VideoInfo, _kb: &String, vb: &VideoInfo) -> cmp::Ordering {
+fn sorted_by_date(_ka: &str, va: &VideoInfo, _kb: &str, vb: &VideoInfo) -> cmp::Ordering {
     vb.added.cmp(&va.added)
 }
 
@@ -237,8 +237,8 @@ fn time_ago(
 macro_rules! return_if_some {
     ($e:expr) => {{
         let tmp = $e;
-        if tmp.is_some() {
-            return tmp.unwrap();
+        if let Some(x) = tmp {
+            return x;
         }
     }};
 }
@@ -308,7 +308,7 @@ fn generate_list_page(state: &mut State) {
                 p { "Recently added " (PLURALITY) }
                 div class="small-scroll" {
                     table {
-                        @for (video_name, video_info) in video_infos_clone_date.sorted_by(sorted_by_date) {
+                        @for (video_name, video_info) in video_infos_clone_date.sorted_by(|ka, va, kb, kv| sorted_by_date(&ka, va, &kb, kv)) {
                             tr {
                                 th { ({
                                     let ago = compute_time_ago(SystemTime::now(), video_info.added);
@@ -360,7 +360,7 @@ fn generate_list_page(state: &mut State) {
                     tr { th { "-------" } th { "-----" } }
                     tr { th { "Total" } th { (total_views) } }
                     tr { th { "-------" } th { "-----" } }
-                    @for (video_name, video_info) in video_infos_clone.sorted_by(sorted_by_views) {
+                    @for (video_name, video_info) in video_infos_clone.sorted_by(|ka, va, kb, kv| sorted_by_views(&ka, va, &kb, kv)) {
                         tr { th { a href=(video_name) { (video_name) }} th { (video_info.views) } }
                     }
                 }
@@ -371,12 +371,12 @@ fn generate_list_page(state: &mut State) {
     *state.listpage.write().unwrap() = html.into_string();
 }
 
-fn list_all_videos(state: web::Data<State>) -> impl Responder {
+async fn list_all_videos(state: web::Data<State>) -> impl Responder {
     let listpage = state.listpage.read().unwrap();
     HttpResponse::Ok().body(&*listpage)
 }
 
-fn render_video_page(
+async fn render_video_page(
     state: web::Data<State>,
     info: web::Path<String>,
     request: HttpRequest,
@@ -478,7 +478,7 @@ fn render_video_page(
     HttpResponse::Ok().body(html.into_string())
 }
 
-fn unknown_route(state: web::Data<State>, request: HttpRequest) -> impl Responder {
+async fn unknown_route(state: web::Data<State>, request: HttpRequest) -> impl Responder {
     let request_string = format!["{:#?}", request];
     info![state.lgr.borrow_mut(), "Unknown route accessed"; "request" => request_string];
     HttpResponse::TemporaryRedirect()
@@ -500,7 +500,7 @@ enum RanState {
     RanCommand(String),
 }
 
-fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) -> impl Responder {
+async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) -> impl Responder {
     let ran_command;
 
     if !form.act.is_empty() && !form.key.is_empty() {
@@ -563,7 +563,7 @@ fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) -> impl 
     shell_render(ran_command, &form.key)
 }
 
-fn shell() -> impl Responder {
+async fn shell() -> impl Responder {
     shell_render(RanState::NoCommandToRun, "")
 }
 
@@ -610,13 +610,13 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
 
 // ---
 
-fn redirect_favicon() -> impl Responder {
+async fn redirect_favicon() -> impl Responder {
     HttpResponse::PermanentRedirect()
         .set_header("Location", "/files/favicon/128.png")
         .finish()
 }
 
-fn robots() -> impl Responder {
+async fn robots() -> impl Responder {
     HttpResponse::PermanentRedirect()
         .set_header("Location", "/files/misc/robots.txt")
         .finish()
@@ -711,7 +711,7 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
         let path = file.path();
 
         if let Some(Some(filename)) = path.file_name().map(|x| x.to_str()) {
-            if filename.chars().next().unwrap() == '.' {
+            if filename.starts_with('.') {
                 continue;
             }
 
@@ -724,7 +724,7 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
             let source: PathBuf = ["files", "sources", filename].iter().collect();
             let views: PathBuf = ["files", "statistics", filename].iter().collect();
 
-            if let Ok(views) = slurp(&views).unwrap_or("0".into()).parse() {
+            if let Ok(views) = slurp(&views).unwrap_or_else(|_| "0".into()).parse() {
                 let video_info = VideoInfo {
                     added: modified,
                     source: slurp(&source).ok(),
@@ -764,7 +764,7 @@ fn update_state(mut state: State) {
 
                             if let Some(Some(filename)) = path.file_name().map(|x| x.to_str()) {
 
-                                if filename.chars().next().unwrap() == '.' {
+                                if filename.starts_with('.') {
                                     continue;
                                 }
 
@@ -812,7 +812,7 @@ fn update_state(mut state: State) {
                         let path = file.path();
 
                         if let Some(Some(filename)) = path.file_name().map(|x| x.to_str()) {
-                            if filename.chars().next().unwrap() == '.' {
+                            if filename.starts_with('.') {
                                 continue;
                             }
 
@@ -865,7 +865,8 @@ fn update_state(mut state: State) {
     }
 }
 
-fn main() -> std::io::Result<()> {
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
     let mut state = State::default();
     read_state_from_disk(&mut state)?;
     generate_list_page(&mut state);
@@ -883,7 +884,7 @@ fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let seed = state.random_counter.fetch_add(1, Ordering::Relaxed);
         let mut thread_state = state.clone();
-        thread_state.random = RefCell::new(Random::new((1103515245 * seed + 12345) as u128));
+        thread_state.random = RefCell::new(Random::new((1_103_515_245 * seed + 12345) as u128));
 
         info![thread_state.lgr.borrow_mut(), "Starting worker thread"; "random seed" => seed];
 
@@ -915,6 +916,7 @@ fn main() -> std::io::Result<()> {
     })
     .bind("127.0.0.1:8081")?
     .run()
+    .await
 }
 
 #[cfg(test)]
