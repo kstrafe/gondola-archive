@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene)]
+#!(feature(proc_macro_hygiene)]
 use actix_files::NamedFile;
 use actix_service::Service;
 use actix_web::{
@@ -104,7 +104,7 @@ async fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Resul
     match NamedFile::open(path) {
         Ok(file) => Ok(file),
         Err(err) => {
-            warn![state.lgr_important.borrow_mut(), "Request for non-existent file"; "filename" => InDebug(&rest)];
+            warn!(state.lgr_important.borrow_mut(), "Request for non-existent file"; "filename" => InDebug(&rest));
             Err(err.into())
         }
     }
@@ -131,7 +131,7 @@ async fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
             )
             .finish()
     } else {
-        error![state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index];
+        error!(state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index);
         HttpResponse::TemporaryRedirect()
             .set_header("Location", "/")
             .cookie(
@@ -157,7 +157,7 @@ async fn play_random_video(state: web::Data<State>) -> impl Responder {
             )
             .finish()
     } else {
-        error![state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index];
+        error!(state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index);
         HttpResponse::TemporaryRedirect()
             .set_header("Location", "/")
             .cookie(
@@ -247,22 +247,22 @@ fn compute_time_ago(now: SystemTime, then: SystemTime) -> (u32, &'static str) {
     match now.duration_since(then) {
         Ok(duration) => {
             let secs = duration.as_secs();
-            return_if_some![time_ago(
+            return_if_some!(time_ago(
                 secs,
                 (3600.0 * 24.0 * 365.25) as u64,
                 "year ago",
                 "years ago"
-            )];
-            return_if_some![time_ago(
+            ));
+            return_if_some!(time_ago(
                 secs,
                 (3600.0 * 24.0 * 30.44) as u64,
                 "month ago",
                 "months ago"
-            )];
-            return_if_some![time_ago(secs, 3600 * 24 * 7, "week ago", "weeks ago")];
-            return_if_some![time_ago(secs, 3600 * 24, "day ago", "days ago")];
-            return_if_some![time_ago(secs, 3600, "hour ago", "hours ago")];
-            return_if_some![time_ago(secs, 60, "minute ago", "minutes ago")];
+            ));
+            return_if_some!(time_ago(secs, 3600 * 24 * 7, "week ago", "weeks ago"));
+            return_if_some!(time_ago(secs, 3600 * 24, "day ago", "days ago"));
+            return_if_some!(time_ago(secs, 3600, "hour ago", "hours ago"));
+            return_if_some!(time_ago(secs, 60, "minute ago", "minutes ago"));
             (0, "Just now")
         }
         Err(_) => (0, "File is newer than current time"),
@@ -315,7 +315,7 @@ fn generate_list_page(state: &mut State) {
                                     if ago.0 == 0 {
                                         ago.1.to_string()
                                     } else {
-                                        format!["{} {}", ago.0, ago.1]
+                                        format!("{} {}", ago.0, ago.1)
                                     }
                                 })
                                 }
@@ -339,7 +339,7 @@ fn generate_list_page(state: &mut State) {
                                     count += 1;
                                 }
                             }
-                            format!["{:.2}", (count * 100) as f32 / video_infos.len() as f32]
+                            format!("{:.2}", (count * 100) as f32 / video_infos.len() as f32)
                         })
                         "%"
                     }
@@ -479,8 +479,8 @@ async fn render_video_page(
 }
 
 async fn unknown_route(state: web::Data<State>, request: HttpRequest) -> impl Responder {
-    let request_string = format!["{:#?}", request];
-    info![state.lgr.borrow_mut(), "Unknown route accessed"; "request" => request_string];
+    let request_string = format!("{:#?}", request);
+    info!(state.lgr.borrow_mut(), "Unknown route accessed"; "request" => request_string);
     HttpResponse::TemporaryRedirect()
         .set_header("Location", "/")
         .finish()
@@ -505,7 +505,7 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
 
     if !form.act.is_empty() && !form.key.is_empty() {
         let act_clone = form.act.clone();
-        info![state.lgr.borrow_mut(), "Running shell"; "act" => act_clone];
+        info!(state.lgr.borrow_mut(), "Running shell"; "act" => act_clone);
         if let Ok(password) = slurp(&PathBuf::from("password")) {
             if form.key.clone() + "\n" == password {
                 let mut string = vec![];
@@ -515,7 +515,7 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
                     context: &mut web::Data<State>,
                     args: &[Type],
                 ) -> Result<String, String> {
-                    info![context.lgr.borrow_mut(), "Running handler"];
+                    info!(context.lgr.borrow_mut(), "Running handler");
                     if let [Type::String(string)] = args {
                         *context.announcement.write().unwrap() = Some(string.clone());
                         Ok("Announcement changed".into())
@@ -550,10 +550,10 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
                 ran_command = RanState::WrongPassword;
             }
         } else {
-            error![
+            error!(
                 state.lgr_important.borrow_mut(),
                 "Unable to read password file for shell commands"
-            ];
+            );
             ran_command = RanState::WrongPassword;
         }
     } else {
@@ -734,12 +734,12 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
                 video_infos.insert(filename.into(), video_info.clone());
 
                 let filename = String::from(filename);
-                trace![lgr, "Inserting file into table"; "filename" => filename, "info" => InDebug(&video_info); clone video_info];
+                trace!(lgr, "Inserting file into table"; "filename" => filename, "info" => InDebug(&video_info); clone video_info);
             } else {
-                error![lgr_important, "Views file contains a non-number value"; "filename" => InDebug(&views)];
+                error!(lgr_important, "Views file contains a non-number value"; "filename" => InDebug(&views));
             }
         } else {
-            error![lgr_important, "Unable to read file name from file"; "filename" => InDebug(&path)];
+            error!(lgr_important, "Unable to read file name from file"; "filename" => InDebug(&path));
         }
     }
 
@@ -754,7 +754,7 @@ fn update_state(mut state: State) {
         thread::sleep(Duration::from_secs(60 * 30));
         {
             benchmark! {
-                |duration| info![lgr, "Time to load video files and sources"; "duration" => InDebug(&duration)],
+                |duration| info!(lgr, "Time to load video files and sources"; "duration" => InDebug(&duration)),
                 match read_dir("files/video/") {
                     Ok(directory) => {
                         for file in directory {
@@ -791,16 +791,16 @@ fn update_state(mut state: State) {
                                         writer.insert(filename.into(), video_info.clone());
 
                                         let filename = String::from(filename);
-                                        trace![lgr, "Inserting new file into table"; "filename" => filename, "info" => InDebug(&video_info); clone video_info];
+                                        trace!(lgr, "Inserting new file into table"; "filename" => filename, "info" => InDebug(&video_info); clone video_info);
                                     }
                                 }
                             } else {
-                                error![lgr_important, "Unable to read file name from file"; "filename" => InDebug(&path)];
+                                error!(lgr_important, "Unable to read file name from file"; "filename" => InDebug(&path));
                             }
                         }
                     }
                     Err(err) => {
-                        error![lgr_important, "Unable to read directory"; "directory" => "files/video", "error" => err];
+                        error!(lgr_important, "Unable to read directory"; "directory" => "files/video", "error" => err);
                     }
                 }
             }
@@ -820,28 +820,28 @@ fn update_state(mut state: State) {
                                 let mut writer = state.video_info.write().unwrap();
                                 writer.swap_remove(filename);
                                 let filename = filename.to_string();
-                                trace![lgr, "Removing file from table"; "filename" => filename];
+                                trace!(lgr, "Removing file from table"; "filename" => filename);
                             }
 
                             let filename = filename.to_string();
                             if let Err(err) = remove_file(path) {
-                                error![lgr_important, "Unable to remove removal file"; "error" => err, "filename" => filename];
+                                error!(lgr_important, "Unable to remove removal file"; "error" => err, "filename" => filename);
                             }
                         }
                     }
                 }
                 Err(err) => {
-                    error![lgr_important, "Unable to read directory"; "directory" => "files/remove", "error" => err];
+                    error!(lgr_important, "Unable to read directory"; "directory" => "files/remove", "error" => err);
                 }
             }
 
             let video_infos = benchmark! {
-                |duration| info![lgr, "Time to copy table"; "duration" => InDebug(&duration)],
+                |duration| info!(lgr, "Time to copy table"; "duration" => InDebug(&duration)),
                 state.video_info.read().unwrap().clone()
             };
 
             benchmark! {
-                |duration| info![lgr, "Time to write statistics to disk"; "duration" => InDebug(&duration)],
+                |duration| info!(lgr, "Time to write statistics to disk"; "duration" => InDebug(&duration)),
                 for (key, value) in video_infos.iter() {
                     let views: PathBuf = ["files", "statistics", &key].iter().collect();
                     match File::create(views) {
@@ -849,12 +849,12 @@ fn update_state(mut state: State) {
                             match file.write_all(value.views.to_string().as_bytes()) {
                                 Ok(_) => {}
                                 Err(err) => {
-                                    error![lgr_important, "Unable to write to statistics file"; "error" => err];
+                                    error!(lgr_important, "Unable to write to statistics file"; "error" => err);
                                 }
                             }
                         }
                         Err(err) => {
-                            error![lgr_important, "Unable to create statistics file"; "error" => err];
+                            error!(lgr_important, "Unable to create statistics file"; "error" => err);
                         }
                     }
 
@@ -879,14 +879,14 @@ async fn main() -> std::io::Result<()> {
         })
         .expect("Unable to start the updater thread");
 
-    info![state.lgr.borrow_mut(), "Initializing"; "working directory" => InDebug(&std::env::current_dir())];
+    info!(state.lgr.borrow_mut(), "Initializing"; "working directory" => InDebug(&std::env::current_dir()));
 
     HttpServer::new(move || {
         let seed = state.random_counter.fetch_add(1, Ordering::Relaxed);
         let mut thread_state = state.clone();
         thread_state.random = RefCell::new(Random::new((1_103_515_245 * seed + 12345) as u128));
 
-        info![thread_state.lgr.borrow_mut(), "Starting worker thread"; "random seed" => seed];
+        info!(thread_state.lgr.borrow_mut(), "Starting worker thread"; "random seed" => seed);
 
         let mut benchmark_log = state.lgr.borrow_mut().clone_with_context("benchmark");
         let mut request_log = state.lgr.borrow_mut().clone_with_context("request");
@@ -894,10 +894,10 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(thread_state)
             .wrap_fn(move |req, srv| {
-                let request = format!["{:?}", req];
-                info![request_log, "Incoming request"; "data" => request];
+                let request = format!("{:?}", req);
+                info!(request_log, "Incoming request"; "data" => request);
                 benchmark! {
-                    |duration| info![benchmark_log, "Total request time"; "duration" => InDebug(&duration)],
+                    |duration| info!(benchmark_log, "Total request time"; "duration" => InDebug(&duration)),
                     srv.call(req)
                 }
             })
@@ -930,7 +930,7 @@ mod tests {
         let mut random2 = Random::new(random.gen());
 
         for _ in 0..100 {
-            assert_ne![random1.gen::<usize>(), random2.gen::<usize>()];
+            assert_ne!(random1.gen::<usize>(), random2.gen::<usize>());
         }
     }
 }
