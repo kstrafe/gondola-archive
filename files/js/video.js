@@ -15,6 +15,11 @@ function ended(handle) {
 }
 
 function toggle_pause() {
+    let f = navigator.userAgent.search("Firefox");↲
+    if (f == -1) {↲
+        return;↲
+    }↲
+
     if (document.getElementById('video').paused) {
        document.getElementById('video').play();
     } else {
