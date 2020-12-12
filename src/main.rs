@@ -865,7 +865,7 @@ fn update_state(mut state: State) {
     }
 }
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let mut state = State::default();
     read_state_from_disk(&mut state)?;
