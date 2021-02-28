@@ -1,29 +1,31 @@
 #!(feature(proc_macro_hygiene)]
-use actix_files::NamedFile;
-use actix_service::Service;
-use actix_web::{
-    cookie::Cookie, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
-};
-use chrono::{prelude::*, DateTime};
-use fast_logger::{error, info, trace, warn, Generic, InDebug, Logger};
-use gameshell::{predicates::ANY_STRING, types::Type, GameShell, IncConsumer};
-use indexmap::IndexMap;
-use maud::{html, Markup, PreEscaped, DOCTYPE};
-use rand::Rng;
-use rand_pcg::Pcg64Mcg as Random;
-use serde_derive::Deserialize;
-use std::{
-    cell::RefCell,
-    cmp,
-    fs::{read_dir, remove_file, File},
-    io::{self, Read, Write},
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, RwLock,
+use {
+    actix_files::NamedFile,
+    actix_service::Service,
+    actix_web::{
+        cookie::Cookie, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
     },
-    thread,
-    time::{Duration, Instant, SystemTime},
+    chrono::{prelude::*, DateTime},
+    fast_logger::{error, info, trace, warn, Generic, InDebug, Logger},
+    gameshell::{predicates::ANY_STRING, types::Type, GameShell, IncConsumer},
+    indexmap::IndexMap,
+    maud::{html, Markup, PreEscaped, DOCTYPE},
+    rand::Rng,
+    rand_pcg::Pcg64Mcg as Random,
+    serde_derive::Deserialize,
+    std::{
+        cell::RefCell,
+        cmp,
+        fs::{read_dir, remove_file, File},
+        io::{self, Read, Write},
+        path::PathBuf,
+        sync::{
+            atomic::{AtomicU64, Ordering},
+            Arc, RwLock,
+        },
+        thread,
+        time::{Duration, Instant, SystemTime},
+    },
 };
 
 // ---
@@ -119,7 +121,7 @@ fn increment_view_count(state: &web::Data<State>, info: &str) {
 
 async fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
     let video_infos = state.video_info.read().unwrap();
-    let index = state.random.borrow_mut().gen_range(0, video_infos.len());
+    let index = state.random.borrow_mut().gen_range(0..video_infos.len());
     let entry = video_infos.get_index(index);
     if let Some(entry) = entry {
         HttpResponse::TemporaryRedirect()
@@ -145,7 +147,7 @@ async fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
 
 async fn play_random_video(state: web::Data<State>) -> impl Responder {
     let video_infos = state.video_info.read().unwrap();
-    let index = state.random.borrow_mut().gen_range(0, video_infos.len());
+    let index = state.random.borrow_mut().gen_range(0..video_infos.len());
     let entry = video_infos.get_index(index);
     if let Some(entry) = entry {
         HttpResponse::TemporaryRedirect()
