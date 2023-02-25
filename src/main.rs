@@ -304,7 +304,7 @@ fn generate_list_page(state: &mut State) {
                     strong { "Videos" } " normally autoplay. If you click Next (ordered) autoplay will play sequentially, if you click Next (random) autoplay will play in random order."
                 }
                 p {
-                    strong { (SINGULAR) } " suggestions: macocio@gmail.com"
+                    strong { (SINGULAR) } " suggestions: gondola@stravers.net"
                 }
                 br;
                 p { "Recently added " (PLURALITY) }
