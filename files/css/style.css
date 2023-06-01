@@ -2,13 +2,11 @@
 * { margin: 0; padding: 0; }
 .rainbow-block { animation: color_change 3s infinite alternate; border: thin solid; font-size: 1.2em; font-weight: bold; }
 .announcement { background: rgba(127, 0, 0, 0.5); color: white; display: inline-block; height: auto; position: absolute; text-align: center; width: 100%; }
-body { background-color: grey; color: black; position: absolute; }
-form { width: 100%; }
-input { width: 100%; }
+body { position: absolute; }
 strong { font-weight: bold; }
 .source-table { border-right: thin solid black; display: inline-block; font-size: 0.8em; vertical-align: top; max-width: 70%; }
 .view-table { display: inline-block; font-size: 0.8em; vertical-align: top; max-width: 70%; }
-tr:nth-child(even) { background-color: #777777; }
+tr:nth-child(even) { background-color: #EEEEEE; }
 @keyframes color_change { 0% { background-color: cyan; } 25% { background-color: orange; } 50% { background-color: yellow; } 75% { background-color: chartreuse; } 100% { background-color: red; } }
 .loading:after { animation: dotty steps(1, end) 2s infinite; content: ''; display: inline-block; font-family: monospace; }
 @keyframes dotty { 0% { content: '|'; } 25% { content: '/'; } 50% { content: '-'; } 75% { content: '\\'; } 100% { content: '|'; }}
@@ -17,10 +15,9 @@ tr:nth-child(even) { background-color: #777777; }
 .button { background: rgba(32, 40, 45, 0.3); border: thin solid #1C252B;  box-sizing:border-box; color: lightgrey; display: inline-block; font-size: 1em; height: 100%; overflow: auto; padding: 0.3em; text-align: center; text-decoration: none; vertical-align: middle; white-space: normal; word-break: break-all; width: 25%; }
 .button:hover { cursor: pointer; }
 .center { position: relative; top: 50%; transform: translate(0, -50%); vertical-align: middle; }
-.feedback { color: #2ECC40; }
 .fourofour { font-family: Courier; position: relative; top: 50%; text-align: center; transform: translate(0%, -50%); vertical-align: middle; }
 .giant { font-size: 2em; }
-.main { background-image: url("/files/images/sharding.jpg"); background-attachment: fixed; background-position: center top; background-repeat: y; background-size: 100% auto; position: relative; }
+.main { background-image: url("/files/images/sharding.png"); background-attachment: fixed; background-position: center top; background-repeat: y; background-size: 100% auto; position: relative; }
 .screen { height: 100vh; width: 100vw; }
 .small { font-size: 0.8em; }
 .small-scroll { border: 1px solid black; height: 10vh; min-height: 1em; overflow-y: scroll; }
