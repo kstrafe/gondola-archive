@@ -87,6 +87,23 @@ fn header(style_count: u64) -> Markup {
     }
 }
 
+fn header_list() -> Markup {
+    html! {
+        meta charset="UTF-8";
+        meta name="viewport" content="width=device-width,maximum-scale=1,minimum-scale=1,minimal-ui";
+        link rel="icon" type="image/png" href="/files/favicon/16.png";
+        link rel="icon" type="image/png" href="/files/favicon/32.png";
+        link rel="icon" type="image/png" href="/files/favicon/64.png";
+        link rel="icon" type="image/png" href="/files/favicon/128.png";
+        link rel="stylesheet" id="pageStyle" href="/files/css/yotsuba.css" title="switch";
+        link rel="canonical" href="https://gondola.stravers.net/list";
+        meta name="description" content=(DESCRIPTION);
+        meta property="og:title" content=(SINGULAR);
+        meta property="og:description" content=(DESCRIPTION);
+        meta property="og:image" content="/files/128.png";
+    }
+}
+
 // ---
 
 async fn index() -> impl Responder {
@@ -210,11 +227,7 @@ fn find_playmode(request: HttpRequest) -> PlayMode {
     PlayMode::default()
 }
 
-fn sorted_by_views(_ka: &str, va: &VideoInfo, _kb: &str, vb: &VideoInfo) -> cmp::Ordering {
-    vb.views.cmp(&va.views)
-}
-
-fn sorted_by_date(_ka: &str, va: &VideoInfo, _kb: &str, vb: &VideoInfo) -> cmp::Ordering {
+fn sorted_by_date(_ka: &String, va: &VideoInfo, _kb: &String, vb: &VideoInfo) -> cmp::Ordering {
     vb.added.cmp(&va.added)
 }
 
@@ -273,65 +286,41 @@ fn compute_time_ago(now: SystemTime, then: SystemTime) -> (u32, &'static str) {
 
 fn generate_list_page(state: &mut State) {
     let video_infos = state.video_info.read().unwrap();
-    let video_infos_clone = video_infos.clone();
     let video_infos_clone_date = video_infos.clone();
 
-    let mut total_views = 0;
-    for (_, video_info) in video_infos.iter() {
-        total_views += video_info.views;
-    }
-
     let html = html! {
+        (DOCTYPE)
         html {
-            (DOCTYPE)
             head {
-                (header(state.style_count.load(Ordering::Relaxed)))
+                (header_list())
                 title { "All " (PLURALITY) " - " (LIST_TITLE) }
             }
             body {
-                a href="/files/archive/gondolas.zip" { "Download All (zip file)" }
-                p {
-                    a href="https://disqus.com/home/forum/evo-1/" { "All comments on this site!" }
-                }
-                p {
-                    strong { "Public" } " API: " a href="/random" { "/random" } " redirects to a random " (SINGULAR) ". "
-                    a href="/random-raw" { "/random-raw" } " redirects to a random " (SINGULAR) " video stream."
-                }
-                p {
-                    strong { "Videos" } " can be looped in most browsers: right-click -> loop"
-                }
-                p {
-                    strong { "Videos" } " normally autoplay. If you click Next (ordered) autoplay will play sequentially, if you click Next (random) autoplay will play in random order."
-                }
-                p {
-                    strong { (SINGULAR) } " suggestions: gondola@stravers.net"
-                }
-                br;
-                p { "Recently added " (PLURALITY) }
-                div class="small-scroll" {
-                    table {
-                        @for (video_name, video_info) in video_infos_clone_date.sorted_by(|ka, va, kb, kv| sorted_by_date(&ka, va, &kb, kv)) {
-                            tr {
-                                th { ({
-                                    let ago = compute_time_ago(SystemTime::now(), video_info.added);
-                                    if ago.0 == 0 {
-                                        ago.1.to_string()
-                                    } else {
-                                        format!("{} {}", ago.0, ago.1)
-                                    }
-                                })
-                                }
-                                th { a href=(video_name) { (video_name) } }
-                                th { ({
-                                    let datetime: DateTime<Utc> = video_info.added.into();
-                                    datetime.format("%A, %B %d, %Y %T")
-                                }) }
-                            }
-                        }
+                div class="boardBanner" {
+                    div id="bannerCnt" class="title desktop" data-src="/files/images/banner.png" {
+                        img alt="gondola.stravers" src="/files/images/banner.png";
                     }
+                    div class="boardTitle" { "/gs/ - gondola.stravers" }
                 }
-                br;
-                p {
+                div class="navLinks mobile" {
+                    span class="mobileib button" { a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } }
+                    span class="mobileib button" { a href="/random" title="Redirects to a random Gondola" { "Random" } }
+                    span class="mobileib button" { a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } }
+                    span class="mobileib button" { a href="#bottom" { "Bottom" } }
+                }
+                hr class="desktop";
+                div class="navLinks desktop" {
+                    "[" a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } "]"
+                    "[" a href="/random" title="Redirects to a random Gondola" { "Random" } "]"
+                    "[" a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } "]"
+                    "[" a href="#bottom" { "Bottom" } "]"
+                }
+                hr;
+                h4 class="center" {
+                    "Videos can be looped in most browsers: right-click + loop" br; "Videos normally autoplay." br; "If you click Next (ordered) autoplay will play  sequentially, if you click Next (random) autoplay will play in random order." br;
+                    strong { "Gondola suggestions: " } "gondola@stravers.net"
+                }
+                h4 class="center" {
                     "There are " span class="rainbow-block" { (video_infos.len()) } " " (PLURALITY) " in this archive. "
                     span class="rainbow-block" {
                         ({
@@ -341,31 +330,75 @@ fn generate_list_page(state: &mut State) {
                                     count += 1;
                                 }
                             }
-                            format!("{:.2}", (count * 100) as f32 / video_infos.len() as f32)
+                            format!["{:.2}%", (count * 100) as f32 / video_infos.len() as f32]
                         })
-                        "%"
                     }
                     " of " (PLURALITY) " have a source."
                 }
-                br;
-                table class="source-table" {
-                    tr { th { (SINGULAR) " (by name)" } th { "Views" } th { "Source" } }
-                    tr { th { "-------" } th { "-----" } th { "-----" } }
-                    tr { th { "Total" } th { (total_views) } th { "" } }
-                    tr { th { "-------" } th { "-----" } th { "-----" } }
-                    @for (video_name, video_info) in video_infos.iter() {
-                        tr { th { a href=(video_name) { (video_name) }} th { (video_info.views) } th { (video_info.source.as_ref().unwrap_or(&"".to_string())) }}
+                table id="arc-list" class="flashListing sortable" {
+                    thead {
+                        tr {
+                            td class="postblock" { "Gondola Name" }
+                            td class="postblock" { "Source" }
+                            td class="postblock" { "Views" }
+                            td class="postblock" { "Date Added" }
+                            td class="postblock" { "Ago" }
+                        }
+                    }
+                    tbody {
+                        @for (video_name, video_info) in video_infos_clone_date.sorted_by(sorted_by_date) {
+                            tr {
+                                td { a href=(video_name) { (video_name) } }
+                                td { (video_info.source.as_ref().unwrap_or(&String::new())) }
+                                td { (video_info.views) }
+                                td { ({
+                                    let datetime: DateTime<Utc> = video_info.added.into();
+                                    datetime.format("%A, %B %d, %Y %T")
+                                }) }
+                                td { ({
+                                    let ago = compute_time_ago(SystemTime::now(), video_info.added);
+                                    if ago.0 == 0 {
+                                        ago.1.to_string()
+                                    } else {
+                                        format!["{} {}", ago.0, ago.1]
+                                    }
+                                })
+                                }
+                            }
+                        }
                     }
                 }
-                table class="view-table" {
-                    tr { th { (SINGULAR) " (by views)" } th { "Views" } }
-                    tr { th { "-------" } th { "-----" } }
-                    tr { th { "Total" } th { (total_views) } }
-                    tr { th { "-------" } th { "-----" } }
-                    @for (video_name, video_info) in video_infos_clone.sorted_by(|ka, va, kb, kv| sorted_by_views(&ka, va, &kb, kv)) {
-                        tr { th { a href=(video_name) { (video_name) }} th { (video_info.views) } }
+                hr;
+                div class="navLinks navLinksBot desktop" {
+                    "[" a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } "]"
+                    "[" a href="/random" title="Redirects to a random Gondola" { "Random" } "]"
+                    "[" a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } "]"
+                    "[" a href="#top" { "Top" } "]"
+                }
+                hr class="desktop";
+                div class="navLinks mobile" {
+                    span class="mobileib button" { a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } }
+                    span class="mobileib button" { a href="/random" title="Redirects to a random Gondola" { "Random" } }
+                    span class="mobileib button" { a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } }
+                    span class="mobileib button" { a href="#top" { "Top" } }
+                }
+                hr class="mobile";
+
+                div class="cssDropdown" {
+                    span class="stylechanger" {
+                        "Style: "
+                        select id="swapCSS" onchange="swapCSS()" {
+                            option value="/files/css/yotsuba.css" { "Yotsuba" }
+                            option value="/files/css/yotsublue.css" { "Yotsuba Blue" }
+                        }
                     }
                 }
+
+                div id="bottom" {}
+                script type="text/javascript" {
+                    (PreEscaped("function swapCSS() { var x = document.getElementById(\"swapCSS\").value; document.getElementById(\"pageStyle\").setAttribute(\"href\", x); }"))
+                }
+                script type="text/javascript" src="/files/js/sorttable.js" {}
             }
         }
     };
@@ -413,7 +446,7 @@ async fn render_video_page(
             body class="main" {
                 @if let Some(announcement) = &*announcement {
                     div class="announcement" {
-                        (announcement)
+                        (PreEscaped(announcement))
                     }
                 }
                 div class="video" {
