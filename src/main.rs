@@ -24,8 +24,10 @@ use {
             Arc, RwLock,
         },
         thread,
+        num::ParseIntError,
         time::{Duration, Instant, SystemTime},
     },
+    sha2::{Digest, Sha512},
 };
 
 // ---
@@ -532,7 +534,15 @@ struct ShellCommandForm {
 enum RanState {
     NoCommandToRun,
     WrongPassword,
+    PasswordNotHex,
     RanCommand(String),
+}
+
+pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect()
 }
 
 async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) -> impl Responder {
@@ -542,47 +552,56 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
         let act_clone = form.act.clone();
         info!(state.lgr.borrow_mut(), "Running shell"; "act" => act_clone);
         if let Ok(password) = slurp(&PathBuf::from("password")) {
-            if form.key.clone() + "\n" == password {
-                let mut string = vec![];
-                let act = form.act.clone() + "\n";
-                let mut gsh = GameShell::new(state, act.as_bytes(), &mut string);
-                fn handler(
-                    context: &mut web::Data<State>,
-                    args: &[Type],
-                ) -> Result<String, String> {
-                    info!(context.lgr.borrow_mut(), "Running handler");
-                    if let [Type::String(string)] = args {
-                        *context.announcement.write().unwrap() = Some(string.clone());
-                        Ok("Announcement changed".into())
-                    } else {
-                        Err("Unable to change announcement".into())
+            let password = password.trim();
+            if let Ok(pw) = decode_hex(password) {
+                let mut hasher = Sha512::new();
+                hasher.update(form.key.as_bytes());
+                let result = hasher.finalize();
+                // println!("key: {:?}, result: {:?}, password: {:?}", form.key.as_bytes(), &result[..], decode_hex(password));
+                if &result[..] == pw {
+                    let mut string = vec![];
+                    let act = form.act.clone() + "\n";
+                    let mut gsh = GameShell::new(state, act.as_bytes(), &mut string);
+                    fn handler(
+                        context: &mut web::Data<State>,
+                        args: &[Type],
+                    ) -> Result<String, String> {
+                        info!(context.lgr.borrow_mut(), "Running handler");
+                        if let [Type::String(string)] = args {
+                            *context.announcement.write().unwrap() = Some(string.clone());
+                            Ok("Announcement changed".into())
+                        } else {
+                            Err("Unable to change announcement".into())
+                        }
                     }
+                    gsh.register((&[("announce", ANY_STRING)], handler))
+                        .unwrap();
+
+                    fn denounce(context: &mut web::Data<State>, _: &[Type]) -> Result<String, String> {
+                        *context.announcement.write().unwrap() = None;
+                        Ok("Announcement disabled".into())
+                    }
+                    gsh.register((&[("denounce", None)], denounce)).unwrap();
+
+                    fn style_counter(
+                        context: &mut web::Data<State>,
+                        _: &[Type],
+                    ) -> Result<String, String> {
+                        context.style_count.fetch_add(1, Ordering::Relaxed);
+                        Ok("Style counter incremented".into())
+                    }
+                    gsh.register((&[("style", None)], style_counter)).unwrap();
+
+                    let mut buffer = [0u8; 1024];
+                    gsh.run(&mut buffer);
+
+                    ran_command =
+                        RanState::RanCommand(std::str::from_utf8(&string[..]).unwrap().to_string());
+                } else {
+                    ran_command = RanState::WrongPassword;
                 }
-                gsh.register((&[("announce", ANY_STRING)], handler))
-                    .unwrap();
-
-                fn denounce(context: &mut web::Data<State>, _: &[Type]) -> Result<String, String> {
-                    *context.announcement.write().unwrap() = None;
-                    Ok("Announcement disabled".into())
-                }
-                gsh.register((&[("denounce", None)], denounce)).unwrap();
-
-                fn style_counter(
-                    context: &mut web::Data<State>,
-                    _: &[Type],
-                ) -> Result<String, String> {
-                    context.style_count.fetch_add(1, Ordering::Relaxed);
-                    Ok("Style counter incremented".into())
-                }
-                gsh.register((&[("style", None)], style_counter)).unwrap();
-
-                let mut buffer = [0u8; 1024];
-                gsh.run(&mut buffer);
-
-                ran_command =
-                    RanState::RanCommand(std::str::from_utf8(&string[..]).unwrap().to_string());
             } else {
-                ran_command = RanState::WrongPassword;
+                ran_command = RanState::PasswordNotHex;
             }
         } else {
             error!(
@@ -628,6 +647,9 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
                         }
                         RanState::WrongPassword => {
                             "Wrong password"
+                        }
+                        RanState::PasswordNotHex => {
+                            "Password is not in hex format on the server"
                         }
                         RanState::RanCommand(string) => {
                             "Command executed:\n"
