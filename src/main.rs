@@ -16,7 +16,7 @@ use {
     std::{
         cell::RefCell,
         cmp,
-        fs::{read_dir, remove_file, File},
+        fs::{read_dir, File},
         io::{self, Read, Write},
         path::PathBuf,
         sync::{
@@ -856,36 +856,6 @@ fn update_state(mut state: State) {
                     Err(err) => {
                         error!(lgr_important, "Unable to read directory"; "directory" => "files/video", "error" => err);
                     }
-                }
-            }
-
-            match read_dir("files/remove") {
-                Ok(directory) => {
-                    for file in directory {
-                        let file = if let Ok(file) = file { file } else { continue };
-                        let path = file.path();
-
-                        if let Some(Some(filename)) = path.file_name().map(|x| x.to_str()) {
-                            if filename.starts_with('.') {
-                                continue;
-                            }
-
-                            {
-                                let mut writer = state.video_info.write().unwrap();
-                                writer.swap_remove(filename);
-                                let filename = filename.to_string();
-                                trace!(lgr, "Removing file from table"; "filename" => filename);
-                            }
-
-                            let filename = filename.to_string();
-                            if let Err(err) = remove_file(path) {
-                                error!(lgr_important, "Unable to remove removal file"; "error" => err, "filename" => filename);
-                            }
-                        }
-                    }
-                }
-                Err(err) => {
-                    error!(lgr_important, "Unable to read directory"; "directory" => "files/remove", "error" => err);
                 }
             }
 
