@@ -92,7 +92,7 @@ fn header_list() -> Markup {
         link rel="icon" type="image/png" href="/files/favicon/64.png";
         link rel="icon" type="image/png" href="/files/favicon/128.png";
         link rel="stylesheet" id="pageStyle" href="/files/css/yotsuba.css" title="switch";
-        link rel="canonical" href="https://gondola.stravers.net/list";
+        link rel="canonical" href=(format!("{}/list", SITE_NAME));
         meta name="description" content=(DESCRIPTION);
         meta property="og:title" content=(SINGULAR);
         meta property="og:description" content=(DESCRIPTION);
@@ -294,9 +294,9 @@ fn generate_list_page(state: &mut State) {
             body {
                 div class="boardBanner" {
                     div id="bannerCnt" class="title desktop" data-src="/files/images/banner.png" {
-                        img alt="gondola.stravers" src="/files/images/banner.png";
+                        img alt=(NAME) src="/files/images/banner.png";
                     }
-                    div class="boardTitle" { "/gs/ - gondola.stravers" }
+                    div class="boardTitle" { (format!("{} - {}", BOARD, NAME)) }
                 }
                 div class="navLinks mobile" {
                     span class="mobileib button" { a href=(format!("https://disqus.com/home/forum/{}/", FORUM_NAME)) { "View All Comments" } }
@@ -314,7 +314,7 @@ fn generate_list_page(state: &mut State) {
                 hr;
                 h4 class="center" {
                     "Videos can be looped in most browsers: right-click + loop" br; "Videos normally autoplay." br; "If you click Next (ordered) autoplay will play  sequentially, if you click Next (random) autoplay will play in random order." br;
-                    strong { "Gondola suggestions: " } "gondola@stravers.net"
+                    strong { "Gondola suggestions: " } (EMAIL)
                 }
                 h4 class="center" {
                     "There are " span class="rainbow-block" { (video_infos.len()) } " " (PLURALITY) " in this archive. "
