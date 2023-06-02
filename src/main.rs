@@ -28,10 +28,12 @@ use {
         time::{Duration, Instant, SystemTime},
     },
     sha2::{Digest, Sha512},
+    self::config::*,
 };
 
 // ---
 
+mod config;
 mod writer;
 
 // ---
@@ -51,14 +53,6 @@ macro_rules! benchmark {
 static COOKIE_NAME: &str = "autoplay";
 static COOKIE_AUTOPLAY_RANDOM_VALUE: &str = "random";
 static COOKIE_AUTOPLAY_NEXT_VALUE: &str = "next";
-
-static PLURALITY: &str = "Gondolas";
-static LIST_TITLE: &str = "GondolaArchive";
-static DEFAULT_VIDEO: &str = "/FrontPage.webm";
-static DESCRIPTION: &str = "Gondola webms depicting our favorite silent observer";
-static SINGULAR: &str = "Gondola";
-static FORUM_NAME: &str = "evo-1";
-static SITE_NAME: &str = "http://gondola.stravers.net";
 
 fn header(style_count: u64) -> Markup {
     let december = Utc::today().month() == 12;
@@ -974,7 +968,7 @@ async fn main() -> std::io::Result<()> {
             .route("/{name}", web::get().to(render_video_page))
             .default_service(web::get().to(unknown_route))
     })
-    .bind("127.0.0.1:8081")?
+    .bind(format!("127.0.0.1:{}", PORT))?
     .run()
     .await
 }
