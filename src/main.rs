@@ -711,9 +711,9 @@ impl Default for State {
             writer::create_rotational_writer("files/logs/important"),
         );
         lgr.set_colorize(true);
-        lgr.set_log_level(128);
+        lgr.set_log_level(LOGLEVEL);
         lgr_important.set_colorize(true);
-        lgr_important.set_log_level(255);
+        lgr_important.set_log_level(LOGLEVEL_IMPORTANT);
         Self {
             announcement: Arc::new(RwLock::new(None)),
             style_count: Arc::new(AtomicU64::new(0)),

@@ -14,3 +14,6 @@ pub static PORT: u16 = 8081; // TCP port to attach to
 pub static NAME: &str = "gondola.stravers"; // Name of the site
 pub static EMAIL: &str = "gondola@stravers.net"; // Email for contacting the site
 pub static BOARD: &str = "/gs/"; // /list board title
+pub static LOGLEVEL: u8 = 128; // Log level of the standard logger
+pub static LOGLEVEL_IMPORTANT: u8 = 255; // Log level of the important logger (trace = 255, debug = 192,
+                                         // info = 128, warn = 64, error = 0)
