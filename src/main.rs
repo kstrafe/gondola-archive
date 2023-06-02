@@ -299,14 +299,14 @@ fn generate_list_page(state: &mut State) {
                     div class="boardTitle" { "/gs/ - gondola.stravers" }
                 }
                 div class="navLinks mobile" {
-                    span class="mobileib button" { a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } }
+                    span class="mobileib button" { a href=(format!("https://disqus.com/home/forum/{}/", FORUM_NAME)) { "View All Comments" } }
                     span class="mobileib button" { a href="/random" title="Redirects to a random Gondola" { "Random" } }
                     span class="mobileib button" { a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } }
                     span class="mobileib button" { a href="#bottom" { "Bottom" } }
                 }
                 hr class="desktop";
                 div class="navLinks desktop" {
-                    "[" a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } "]"
+                    "[" a href=(format!("https://disqus.com/home/forum/{}/", FORUM_NAME)) { "View All Comments" } "]"
                     "[" a href="/random" title="Redirects to a random Gondola" { "Random" } "]"
                     "[" a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } "]"
                     "[" a href="#bottom" { "Bottom" } "]"
@@ -366,14 +366,14 @@ fn generate_list_page(state: &mut State) {
                 }
                 hr;
                 div class="navLinks navLinksBot desktop" {
-                    "[" a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } "]"
+                    "[" a href=(format!("https://disqus.com/home/forum/{}/", FORUM_NAME)) { "View All Comments" } "]"
                     "[" a href="/random" title="Redirects to a random Gondola" { "Random" } "]"
                     "[" a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } "]"
                     "[" a href="#top" { "Top" } "]"
                 }
                 hr class="desktop";
                 div class="navLinks mobile" {
-                    span class="mobileib button" { a href="https://disqus.com/home/forum/evo-1/" { "View All Comments" } }
+                    span class="mobileib button" { a href=(format!("https://disqus.com/home/forum/{}/", FORUM_NAME)) { "View All Comments" } }
                     span class="mobileib button" { a href="/random" title="Redirects to a random Gondola" { "Random" } }
                     span class="mobileib button" { a href="/random-raw" title="Redirects to a random Gondola video stream" { "Random Raw" } }
                     span class="mobileib button" { a href="#top" { "Top" } }
