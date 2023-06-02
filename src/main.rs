@@ -630,6 +630,9 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
                 title { "Interactive Shell" }
             }
             body {
+                p { "anounce (#your string here) - Will bring up a red bar on the main page with your announcement (Note that this string is NOT HTML escaped)" }
+                p { "denounce - Will remove the announcement" }
+                p { "style - Will increment the style counter so style updates are shown to users" }
                 form action="shell" method="POST" {
                     input autofocus="" name="act" type="text" placeholder="Command" size="100";
                     br;
