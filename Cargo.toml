@@ -1,8 +1,8 @@
 [package]
 name = "gondola-rs"
-version = "0.2.1"
-authors = ["Kevin Robert Stravers <macocio@gmail.com>"]
-edition = "2018"
+version = "0.3.0"
+authors = ["Kevin Robert Stravers <kevin@stravers.net>"]
+edition = "2021"
 
 [dependencies]
 actix-files = "0.6.2"
@@ -11,8 +11,7 @@ actix-web = "4.3.1"
 actix-rt = "2.8.0"
 chrono = "0.4.26"
 fast-logger = "0.7.1"
-file-rotate = "0.7.4"
-gameshell = "0.4.1"
+file-rotate = "0.7.5"
 indexmap = "1.9.3"
 maud = "0.25"
 rand = "0.8.5"

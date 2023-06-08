@@ -3,10 +3,11 @@ use {
     self::config::*,
     actix_files::NamedFile,
     actix_service::Service,
-    actix_web::{cookie::Cookie, web, App, HttpRequest, HttpResponse, HttpServer, Responder},
+    actix_web::{
+        cookie::Cookie, web, web::Data, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    },
     chrono::{prelude::*, DateTime},
     fast_logger::{error, info, trace, warn, Generic, InDebug, Logger},
-    gameshell::{predicates::ANY_STRING, types::Type, GameShell, IncConsumer},
     indexmap::IndexMap,
     maud::{html, Markup, PreEscaped, DOCTYPE},
     rand::Rng,
@@ -551,47 +552,22 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
                 let result = hasher.finalize();
                 // println!("key: {:?}, result: {:?}, password: {:?}", form.key.as_bytes(), &result[..], decode_hex(password));
                 if &result[..] == pw {
-                    let mut string = vec![];
-                    let act = form.act.clone() + "\n";
-                    let mut gsh = GameShell::new(state, act.as_bytes(), &mut string);
-                    fn handler(
-                        context: &mut web::Data<State>,
-                        args: &[Type],
-                    ) -> Result<String, String> {
-                        info!(context.lgr.borrow(), "Running handler");
-                        if let [Type::String(string)] = args {
-                            *context.announcement.write().unwrap() = Some(string.clone());
-                            Ok("Announcement changed".into())
-                        } else {
-                            Err("Unable to change announcement".into())
-                        }
+                    let string;
+                    let act = form.act.clone();
+                    if act == "style" {
+                        state.style_count.fetch_add(1, Ordering::Relaxed);
+                        string = "Style count increment";
+                    } else if act == "denounce" {
+                        *state.announcement.write().unwrap() = None;
+                        string = "Announcement disabled";
+                    } else if let Some(index) = form.act.find(' ') {
+                        *state.announcement.write().unwrap() =
+                            Some(form.act[index + 1..].to_string());
+                        string = "Announcement changed";
+                    } else {
+                        string = "Unknown command";
                     }
-                    gsh.register((&[("announce", ANY_STRING)], handler))
-                        .unwrap();
-
-                    fn denounce(
-                        context: &mut web::Data<State>,
-                        _: &[Type],
-                    ) -> Result<String, String> {
-                        *context.announcement.write().unwrap() = None;
-                        Ok("Announcement disabled".into())
-                    }
-                    gsh.register((&[("denounce", None)], denounce)).unwrap();
-
-                    fn style_counter(
-                        context: &mut web::Data<State>,
-                        _: &[Type],
-                    ) -> Result<String, String> {
-                        context.style_count.fetch_add(1, Ordering::Relaxed);
-                        Ok("Style counter incremented".into())
-                    }
-                    gsh.register((&[("style", None)], style_counter)).unwrap();
-
-                    let mut buffer = [0u8; 1024];
-                    gsh.run(&mut buffer);
-
-                    ran_command =
-                        RanState::RanCommand(std::str::from_utf8(&string[..]).unwrap().to_string());
+                    ran_command = RanState::RanCommand(string.to_string());
                 } else {
                     ran_command = RanState::WrongPassword;
                 }
@@ -625,7 +601,7 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
                 title { "Interactive Shell" }
             }
             body {
-                p { "announce (#your string here) - Will bring up a red bar on the main page with your announcement (Note that this string is NOT HTML escaped)" }
+                p { "announce <whatever string here> - Excluding the < and > Will bring up a red bar on the main page with your announcement (Note that this string is NOT HTML escaped)" }
                 p { "denounce - Will remove the announcement" }
                 p { "style - Will increment the style counter so style updates are shown to users" }
                 form action="shell" method="POST" {
@@ -917,7 +893,7 @@ async fn main() -> std::io::Result<()> {
         let request_log = state.lgr.borrow().clone_with_context("request");
 
         App::new()
-            .app_data(thread_state)
+            .app_data(Data::new(thread_state))
             .wrap_fn(move |req, srv| {
                 let request = format!("{:?}", req);
                 info!(request_log, "Incoming request"; "data" => request);

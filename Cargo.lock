@@ -53,7 +53,7 @@ dependencies = [
  "actix-service",
  "actix-utils",
  "ahash 0.8.3",
- "base64 0.21.2",
+ "base64",
  "bitflags",
  "brotli",
  "bytes",
@@ -300,12 +300,6 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "base64"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
-
-[[package]]
-name = "base64"
 version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
@@ -395,15 +389,6 @@ dependencies = [
  "time 0.1.44",
  "wasm-bindgen",
  "winapi",
-]
-
-[[package]]
-name = "cmdmat"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a93ba6fdbba9d6b69b8d22d10f5fb04de1a2a5b955334b03a549be020c675623"
-dependencies = [
- "smallvec",
 ]
 
 [[package]]
@@ -524,9 +509,9 @@ dependencies = [
 
 [[package]]
 name = "file-rotate"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14bbc4024961e78784ed5e2b98e2411f75c7be0594c0e7a416ebcede13608b1c"
+checksum = "ddf221ceec4517f3cb764dae3541b2bd87666fc8832e51322fbb97250b468c71"
 dependencies = [
  "chrono",
  "flate2",
@@ -591,18 +576,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gameshell"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e042e912768db34408cbe1c042247be9d01f55f47ab412a0611073ce836e001d"
-dependencies = [
- "base64 0.11.0",
- "cmdmat",
- "metac",
- "regex",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -625,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "gondola-rs"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "actix-files",
  "actix-rt",
@@ -634,7 +607,6 @@ dependencies = [
  "chrono",
  "fast-logger",
  "file-rotate",
- "gameshell",
  "indexmap",
  "maud",
  "rand",
@@ -866,15 +838,6 @@ name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
-
-[[package]]
-name = "metac"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e432378907b0757c737f4d66d10d7095b80016151364fdae5d8d10f37f3a2da"
-dependencies = [
- "smallvec",
-]
 
 [[package]]
 name = "mime"
