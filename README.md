@@ -46,7 +46,7 @@ When removing a video, all you need to do is remove the file from `files/video/`
 
 ## Variables to Change ##
 
-You will need to change some configuration variables to get disqus integration working for your site.
+You will need to change some configuration variables to get disqus integration working for your site. If you want to keep the original disqus forum then no changes need to be made.
 You'll need to change values in `src/config.rs` and run `cargo run --release` again for these changes to take effect.
 
 ## Shell ##
