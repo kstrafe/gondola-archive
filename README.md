@@ -1,6 +1,6 @@
 # Gondola Archive Server #
 
-This project contains the server used for serving the original Gondola Archive as seen on https://gondola.stravers.net/
+This project contains the server used for serving the current Gondola Archive as seen on https://gondola.nabein.me/
 
 # Getting Started #
 
