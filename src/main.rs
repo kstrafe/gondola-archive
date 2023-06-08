@@ -312,8 +312,9 @@ fn generate_list_page(state: &mut State) {
                 }
                 hr;
                 h4 class="center" {
+		    "[" a href=(format!("https://knowyourmeme.com/memes/gondola")) { "What is Gondola?" } "]" br;
                     "Videos can be looped in most browsers: right-click + loop" br; "Videos normally autoplay." br; "If you click Next (ordered) autoplay will play  sequentially, if you click Next (random) autoplay will play in random order." br;
-                    strong { "Gondola suggestions: " } (EMAIL)
+                    strong { "Gondola suggestions, music sources, errors, other comments: " } (EMAIL)
                 }
                 h4 class="center" {
                     "There are " span class="rainbow-block" { (video_infos.len()) } " " (PLURALITY) " in this archive. "
@@ -389,8 +390,16 @@ fn generate_list_page(state: &mut State) {
                     }
                 }
 
-                div id="bottom" {}
-                script type="text/javascript" {
+                div id="bottom" {		    
+		br;br;br;
+		strong { "EN: All content is hosted and presented as is, and any views, expressions, or content found within are reflective of the original creator, and not of the hoster or hosting platform or provider. All content found on this website is in theory safe for general viewing, and does not contain adult or NSFW content." } br;br;
+		strong { "FR: Tous les contenus sont hébergés et présentés en l'état, et toutes les opinions, expressions ou contenus qui s'y trouvent reflètent le créateur original, et non l'hébergeur ou la plateforme d'hébergement ou le fournisseur. Tout le contenu de ce site web est en théorie sans danger pour le grand public et ne contient pas de contenu pour adultes ou NSFW." } br;br;
+		strong { "DE: Alle Inhalte werden so gehostet und präsentiert, wie sie sind, und alle Ansichten, Ausdrücke oder Inhalte, die darin zu finden sind, spiegeln die Meinung des ursprünglichen Erstellers wider und nicht die des Hosters oder der Hosting-Plattform oder des Providers. Alle Inhalte, die auf dieser Website zu finden sind, sind theoretisch sicher für die allgemeine Betrachtung und enthalten keine Inhalte für Erwachsene oder NSFW." } br;br;
+		strong { "FI: Kaikkea sisältöä isännöidään ja esitetään sellaisenaan, ja kaikki sisällössä esiintyvät näkemykset, ilmaisut tai sisältö heijastavat alkuperäistä tekijää, ei isännöitsijää tai isännöintialustaa tai -palveluntarjoajaa. Kaikki tällä verkkosivustolla oleva sisältö on teoriassa turvallista yleistä katselua varten, eikä se sisällä aikuisten tai NSFW-sisältöä." } br;br;
+		strong { "SE: Allt innehåll hostas och presenteras som det är, och alla åsikter, uttryck eller innehåll som finns där återspeglar den ursprungliga skaparen, och inte hostern eller hostingplattformen eller leverantören. Allt innehåll som finns på denna webbplats är i teorin säkert för allmän visning och innehåller inte vuxen- eller NSFW-innehåll." } br;br;
+		}
+                
+		script type="text/javascript" {
                     (PreEscaped("function swapCSS() { var x = document.getElementById(\"swapCSS\").value; document.getElementById(\"pageStyle\").setAttribute(\"href\", x); }"))
                 }
                 script type="text/javascript" src="/files/js/sorttable.js" {}

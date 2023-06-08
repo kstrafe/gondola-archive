@@ -1,0 +1,3 @@
+2023-06-08
+Moved LastGermanSoldier.mp4 to LastGermanSoldier.html, with redirect to .mp4 copy on web.archive.org
+Moved due to dubious content that may be illegal under German law.
