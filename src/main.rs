@@ -1,10 +1,9 @@
 #!(feature(proc_macro_hygiene)]
 use {
+    self::config::*,
     actix_files::NamedFile,
     actix_service::Service,
-    actix_web::{
-        cookie::Cookie, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
-    },
+    actix_web::{cookie::Cookie, web, App, HttpRequest, HttpResponse, HttpServer, Responder},
     chrono::{prelude::*, DateTime},
     fast_logger::{error, info, trace, warn, Generic, InDebug, Logger},
     gameshell::{predicates::ANY_STRING, types::Type, GameShell, IncConsumer},
@@ -13,22 +12,21 @@ use {
     rand::Rng,
     rand_pcg::Pcg64Mcg as Random,
     serde_derive::Deserialize,
+    sha2::{Digest, Sha512},
     std::{
         cell::RefCell,
         cmp,
         fs::{read_dir, File},
         io::{self, Read, Write},
+        num::ParseIntError,
         path::PathBuf,
         sync::{
             atomic::{AtomicU64, Ordering},
             Arc, RwLock,
         },
         thread,
-        num::ParseIntError,
         time::{Duration, Instant, SystemTime},
     },
-    sha2::{Digest, Sha512},
-    self::config::*,
 };
 
 // ---
@@ -55,7 +53,7 @@ static COOKIE_AUTOPLAY_RANDOM_VALUE: &str = "random";
 static COOKIE_AUTOPLAY_NEXT_VALUE: &str = "next";
 
 fn header(style_count: u64) -> Markup {
-    let december = Utc::today().month() == 12;
+    let december = Utc::now().month() == 12;
     html! {
         meta charset="UTF-8";
         meta name="viewport" content="width=device-width,maximum-scale=1,minimum-scale=1,minimal-ui";
@@ -104,7 +102,7 @@ fn header_list() -> Markup {
 
 async fn index() -> impl Responder {
     HttpResponse::PermanentRedirect()
-        .set_header("Location", DEFAULT_VIDEO)
+        .insert_header(("Location", DEFAULT_VIDEO))
         .finish()
 }
 
@@ -119,7 +117,7 @@ async fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Resul
     match NamedFile::open(path) {
         Ok(file) => Ok(file),
         Err(err) => {
-            warn!(state.lgr_important.borrow_mut(), "Request for non-existent file"; "filename" => InDebug(&rest));
+            warn!(state.lgr_important.borrow(), "Request for non-existent file"; "filename" => InDebug(&rest));
             Err(err.into())
         }
     }
@@ -138,7 +136,7 @@ async fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
     let entry = video_infos.get_index(index);
     if let Some(entry) = entry {
         HttpResponse::TemporaryRedirect()
-            .set_header("Location", String::from("/files/video/") + entry.0)
+            .insert_header(("Location", String::from("/files/video/") + entry.0))
             .cookie(
                 Cookie::build(COOKIE_NAME, COOKIE_AUTOPLAY_RANDOM_VALUE)
                     .path("/")
@@ -146,9 +144,9 @@ async fn play_random_video_raw(state: web::Data<State>) -> impl Responder {
             )
             .finish()
     } else {
-        error!(state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index);
+        error!(state.lgr_important.borrow(), "Index does not exist"; "index" => index);
         HttpResponse::TemporaryRedirect()
-            .set_header("Location", "/")
+            .insert_header(("Location", "/"))
             .cookie(
                 Cookie::build(COOKIE_NAME, COOKIE_AUTOPLAY_RANDOM_VALUE)
                     .path("/")
@@ -164,7 +162,7 @@ async fn play_random_video(state: web::Data<State>) -> impl Responder {
     let entry = video_infos.get_index(index);
     if let Some(entry) = entry {
         HttpResponse::TemporaryRedirect()
-            .set_header("Location", String::from("/") + entry.0)
+            .insert_header(("Location", String::from("/") + entry.0))
             .cookie(
                 Cookie::build(COOKIE_NAME, COOKIE_AUTOPLAY_RANDOM_VALUE)
                     .path("/")
@@ -172,9 +170,9 @@ async fn play_random_video(state: web::Data<State>) -> impl Responder {
             )
             .finish()
     } else {
-        error!(state.lgr_important.borrow_mut(), "Index does not exist"; "index" => index);
+        error!(state.lgr_important.borrow(), "Index does not exist"; "index" => index);
         HttpResponse::TemporaryRedirect()
-            .set_header("Location", "/")
+            .insert_header(("Location", "/"))
             .cookie(
                 Cookie::build(COOKIE_NAME, COOKIE_AUTOPLAY_RANDOM_VALUE)
                     .path("/")
@@ -203,7 +201,7 @@ fn find_next_video(state: &web::Data<State>, path: &web::Path<String>) -> String
 
 async fn play_next_video(path: web::Path<String>) -> impl Responder {
     HttpResponse::TemporaryRedirect()
-        .set_header("Location", String::from("/") + &path)
+        .insert_header(("Location", String::from("/") + &path))
         .cookie(
             Cookie::build(COOKIE_NAME, COOKIE_AUTOPLAY_NEXT_VALUE)
                 .path("/")
@@ -404,7 +402,7 @@ fn generate_list_page(state: &mut State) {
 
 async fn list_all_videos(state: web::Data<State>) -> impl Responder {
     let listpage = state.listpage.read().unwrap();
-    HttpResponse::Ok().body(&*listpage)
+    HttpResponse::Ok().body(listpage.clone())
 }
 
 async fn render_video_page(
@@ -511,9 +509,9 @@ async fn render_video_page(
 
 async fn unknown_route(state: web::Data<State>, request: HttpRequest) -> impl Responder {
     let request_string = format!("{:#?}", request);
-    info!(state.lgr.borrow_mut(), "Unknown route accessed"; "request" => request_string);
+    info!(state.lgr.borrow(), "Unknown route accessed"; "request" => request_string);
     HttpResponse::TemporaryRedirect()
-        .set_header("Location", "/")
+        .insert_header(("Location", "/"))
         .finish()
 }
 
@@ -544,7 +542,7 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
 
     if !form.act.is_empty() && !form.key.is_empty() {
         let act_clone = form.act.clone();
-        info!(state.lgr.borrow_mut(), "Running shell"; "act" => act_clone);
+        info!(state.lgr.borrow(), "Running shell"; "act" => act_clone);
         if let Ok(password) = slurp(&PathBuf::from("password")) {
             let password = password.trim();
             if let Ok(pw) = decode_hex(password) {
@@ -560,7 +558,7 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
                         context: &mut web::Data<State>,
                         args: &[Type],
                     ) -> Result<String, String> {
-                        info!(context.lgr.borrow_mut(), "Running handler");
+                        info!(context.lgr.borrow(), "Running handler");
                         if let [Type::String(string)] = args {
                             *context.announcement.write().unwrap() = Some(string.clone());
                             Ok("Announcement changed".into())
@@ -571,7 +569,10 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
                     gsh.register((&[("announce", ANY_STRING)], handler))
                         .unwrap();
 
-                    fn denounce(context: &mut web::Data<State>, _: &[Type]) -> Result<String, String> {
+                    fn denounce(
+                        context: &mut web::Data<State>,
+                        _: &[Type],
+                    ) -> Result<String, String> {
                         *context.announcement.write().unwrap() = None;
                         Ok("Announcement disabled".into())
                     }
@@ -599,7 +600,7 @@ async fn do_shell(state: web::Data<State>, form: web::Form<ShellCommandForm>) ->
             }
         } else {
             error!(
-                state.lgr_important.borrow_mut(),
+                state.lgr_important.borrow(),
                 "Unable to read password file for shell commands"
             );
             ran_command = RanState::WrongPassword;
@@ -666,13 +667,13 @@ fn shell_render(ran_command: RanState, key: &str) -> impl Responder {
 
 async fn redirect_favicon() -> impl Responder {
     HttpResponse::PermanentRedirect()
-        .set_header("Location", "/files/favicon/128.png")
+        .insert_header(("Location", "/files/favicon/128.png"))
         .finish()
 }
 
 async fn robots() -> impl Responder {
     HttpResponse::PermanentRedirect()
-        .set_header("Location", "/files/misc/robots.txt")
+        .insert_header(("Location", "/files/misc/robots.txt"))
         .finish()
 }
 
@@ -704,9 +705,9 @@ struct State {
 
 impl Default for State {
     fn default() -> Self {
-        let mut lgr =
+        let lgr =
             Logger::spawn_with_writer("site", writer::create_rotational_writer("files/logs/log"));
-        let mut lgr_important = Logger::spawn_with_writer(
+        let lgr_important = Logger::spawn_with_writer(
             "important",
             writer::create_rotational_writer("files/logs/important"),
         );
@@ -754,8 +755,8 @@ fn slurp(path: &PathBuf) -> io::Result<String> {
 }
 
 fn read_state_from_disk(state: &mut State) -> io::Result<()> {
-    let mut lgr = state.lgr.borrow_mut();
-    let mut lgr_important = state.lgr_important.borrow_mut();
+    let lgr = state.lgr.borrow();
+    let lgr_important = state.lgr_important.borrow();
 
     let directory = read_dir("files/video/")?;
     let mut video_infos = state.video_info.write().unwrap();
@@ -802,8 +803,8 @@ fn read_state_from_disk(state: &mut State) -> io::Result<()> {
 }
 
 fn update_state(mut state: State) {
-    let mut lgr = state.lgr.borrow().clone_with_context("state-updater");
-    let mut lgr_important = state.lgr_important.borrow().clone_add_context("important");
+    let lgr = state.lgr.borrow().clone_with_context("state-updater");
+    let lgr_important = state.lgr_important.borrow().clone_add_context("important");
     loop {
         thread::sleep(Duration::from_secs(60 * 30));
         {
@@ -903,20 +904,20 @@ async fn main() -> std::io::Result<()> {
         })
         .expect("Unable to start the updater thread");
 
-    info!(state.lgr.borrow_mut(), "Initializing"; "working directory" => InDebug(&std::env::current_dir()));
+    info!(state.lgr.borrow(), "Initializing"; "working directory" => InDebug(&std::env::current_dir()));
 
     HttpServer::new(move || {
         let seed = state.random_counter.fetch_add(1, Ordering::Relaxed);
         let mut thread_state = state.clone();
         thread_state.random = RefCell::new(Random::new((1_103_515_245 * seed + 12345) as u128));
 
-        info!(thread_state.lgr.borrow_mut(), "Starting worker thread"; "random seed" => seed);
+        info!(thread_state.lgr.borrow(), "Starting worker thread"; "random seed" => seed);
 
-        let mut benchmark_log = state.lgr.borrow_mut().clone_with_context("benchmark");
-        let mut request_log = state.lgr.borrow_mut().clone_with_context("request");
+        let benchmark_log = state.lgr.borrow().clone_with_context("benchmark");
+        let request_log = state.lgr.borrow().clone_with_context("request");
 
         App::new()
-            .data(thread_state)
+            .app_data(thread_state)
             .wrap_fn(move |req, srv| {
                 let request = format!("{:?}", req);
                 info!(request_log, "Incoming request"; "data" => request);
