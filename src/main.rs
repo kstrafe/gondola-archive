@@ -4,9 +4,15 @@ use {
     actix_files::NamedFile,
     actix_service::Service,
     actix_web::{
-        cookie::Cookie, web, web::Data, App, HttpRequest, HttpResponse, HttpServer, Responder,
+        cookie::Cookie,
+        error,
+        http::{header::ContentType, StatusCode},
+        web,
+        web::Data,
+        App, HttpRequest, HttpResponse, HttpServer, Responder,
     },
     chrono::{prelude::*, DateTime},
+    derive_more::Display,
     fast_logger::{error, info, trace, warn, Generic, InDebug, Logger},
     indexmap::IndexMap,
     maud::{html, Markup, PreEscaped, DOCTYPE},
@@ -107,6 +113,28 @@ async fn index() -> impl Responder {
         .finish()
 }
 
+#[derive(Debug, Display)]
+enum MyError {
+    #[display(fmt = "unauthorized")]
+    Unauthorized,
+}
+
+impl std::error::Error for MyError {}
+
+impl error::ResponseError for MyError {
+    fn error_response(&self) -> HttpResponse {
+        HttpResponse::build(self.status_code())
+            .insert_header(ContentType::html())
+            .body(self.to_string())
+    }
+
+    fn status_code(&self) -> StatusCode {
+        match self {
+            MyError::Unauthorized => StatusCode::UNAUTHORIZED,
+        }
+    }
+}
+
 async fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Result<NamedFile> {
     let mut path = PathBuf::from("files/");
     let rest = req
@@ -115,6 +143,13 @@ async fn get_file(state: web::Data<State>, req: HttpRequest) -> actix_web::Resul
         .parse::<PathBuf>()
         .unwrap();
     path.push(&rest);
+
+    for item in path.components() {
+        if matches!(item, std::path::Component::ParentDir) {
+            return Err(MyError::Unauthorized.into());
+        }
+    }
+
     match NamedFile::open(path) {
         Ok(file) => Ok(file),
         Err(err) => {
